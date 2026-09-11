@@ -137,7 +137,37 @@
   .hero p.sub {
     max-width: 56ch; margin: 22px auto 0; color: var(--muted); font-size: 18px;
   }
-  .cta-row { display: flex; gap: 14px; justify-content: center; margin-top: 34px; flex-wrap: wrap; }
+  /* install command - the hero's centerpiece */
+  .install-box { max-width: 740px; margin: 34px auto 0; }
+  .install-tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+  .install-tab {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.04em;
+    color: var(--muted); background: none; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px;
+  }
+  .install-tab.active { color: var(--teal); border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
+  .install-cmd[hidden] { display: none; }
+  .install-cmd {
+    display: flex; align-items: center; gap: 12px;
+    background: #0b100f; border: 1px solid var(--teal);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--teal) 8%, transparent),
+                0 14px 40px -18px color-mix(in srgb, var(--teal) 55%, transparent);
+    border-radius: 12px; padding: 15px 18px;
+  }
+  @media (prefers-color-scheme: light) { .install-cmd { background: #0f1c19; } }
+  .install-cmd code {
+    flex: 1; text-align: left; font-size: 14.5px; color: #cfe3de;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .install-cmd .p { color: var(--teal); user-select: none; }
+  .copy-btn {
+    flex: none; font-family: var(--mono); font-size: 12px; cursor: pointer;
+    color: var(--teal); background: none;
+    border: 1px solid var(--border-strong); border-radius: 7px; padding: 5px 12px;
+  }
+  .copy-btn:hover { border-color: var(--teal); }
+  .install-note { margin-top: 11px; font-size: 13px; color: var(--faint); }
+  .cta-row { display: flex; gap: 14px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
   .btn {
     display: inline-flex; align-items: center; gap: 9px;
     font-weight: 600; font-size: 15.5px; border-radius: 10px;
@@ -326,8 +356,23 @@
       author + distributor for up to 50 TVs — and registers it ready to sign.
       No Tizen Studio required. Renewals keep your DUIDs.
     </p>
+    <div class="install-box" id="install">
+      <div class="install-tabs" role="tablist">
+        <button class="install-tab active" data-target="cmd-unix">macOS / Linux</button>
+        <button class="install-tab" data-target="cmd-win">Windows</button>
+      </div>
+      <div class="install-cmd" id="cmd-unix">
+        <code><span class="p">$</span> curl -fsSL https://tizen-cert-cli.vercel.app/install.sh | sh</code>
+        <button class="copy-btn" data-copy="curl -fsSL https://tizen-cert-cli.vercel.app/install.sh | sh" aria-label="Copy install command">copy</button>
+      </div>
+      <div class="install-cmd" id="cmd-win" hidden>
+        <code><span class="p">&gt;</span> irm https://tizen-cert-cli.vercel.app/install.ps1 | iex</code>
+        <button class="copy-btn" data-copy="irm https://tizen-cert-cli.vercel.app/install.ps1 | iex" aria-label="Copy install command">copy</button>
+      </div>
+      <p class="install-note">One command installs it — and updates it later. <a href="install.sh">Read install.sh</a> · <a href="install.ps1">install.ps1</a></p>
+    </div>
     <div class="cta-row">
-      <a class="btn btn-primary" href="https://github.com/gifflet/tizen-cert-cli/releases">Download for macOS · Linux · Windows</a>
+      <a class="btn btn-ghost" href="https://github.com/gifflet/tizen-cert-cli/releases">Download a binary instead</a>
       <a class="btn btn-ghost" href="https://github.com/gifflet/tizen-cert-cli">View source</a>
     </div>
 
@@ -426,9 +471,8 @@
     <h2>From download to signed app</h2>
     <div class="term reveal">
       <div class="term-bar"><i></i><i></i><i></i><span>terminal</span></div>
-      <pre><span class="c"># 1. grab the binary for your platform (or: make build from source)</span>
-<span class="p">$</span> curl -LO https://github.com/gifflet/tizen-cert-cli/releases/latest/download/tizen-cert-darwin-arm64
-<span class="p">$</span> chmod +x tizen-cert-darwin-arm64 && mv tizen-cert-darwin-arm64 /usr/local/bin/tizen-cert
+      <pre><span class="c"># 1. install (macOS/Linux — on Windows: irm https://tizen-cert-cli.vercel.app/install.ps1 | iex)</span>
+<span class="p">$</span> curl -fsSL https://tizen-cert-cli.vercel.app/install.sh | sh
 
 <span class="c"># 2. run the wizard — it does the rest</span>
 <span class="p">$</span> tizen-cert
@@ -518,6 +562,23 @@
     { threshold: 0.12 }
   );
   document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+  document.querySelectorAll(".install-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".install-tab").forEach(t => t.classList.toggle("active", t === tab));
+      document.querySelectorAll(".install-cmd").forEach(cmd => { cmd.hidden = cmd.id !== tab.dataset.target; });
+    });
+  });
+
+  document.querySelectorAll(".copy-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        btn.textContent = "copied!";
+        setTimeout(() => { btn.textContent = "copy"; }, 1600);
+      } catch { btn.textContent = "select manually"; }
+    });
+  });
 </script>
 
 </body>

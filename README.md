@@ -4,12 +4,33 @@
 
 **Generate a complete, valid Samsung Tizen TV certificate profile — author and distributor, for any number of TVs — without Tizen Studio's Certificate Manager.**
 
+[![GitHub Release](https://img.shields.io/github/v/release/gifflet/tizen-cert-cli)](https://github.com/gifflet/tizen-cert-cli/releases)
 ![Go](https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go&logoColor=white)
 ![Platforms](https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20Windows-4493F8)
+
+### [Documentation →](https://tizen-cert-cli.vercel.app)
 
 <img src="docs/demo/tizen-cert.gif" alt="tizen-cert wizard: adding a DUID, picking a privilege level, filling in certificate details, and signing in to Samsung" width="880">
 
 </div>
+
+## 📥 Install
+
+One command — the same one updates you later.
+
+macOS and Linux:
+
+```bash
+curl -fsSL https://tizen-cert-cli.vercel.app/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://tizen-cert-cli.vercel.app/install.ps1 | iex
+```
+
+Read them first if you'd rather: [install.sh](https://tizen-cert-cli.vercel.app/install.sh) · [install.ps1](https://tizen-cert-cli.vercel.app/install.ps1). Or grab a binary from the [releases page](https://github.com/gifflet/tizen-cert-cli/releases).
 
 ---
 
@@ -35,18 +56,21 @@ The point: everything Tizen Studio's Certificate Manager does through dialogs ha
 
 ## 🚀 Quick Start
 
-**Build**
+**Run**
+
+```bash
+tizen-cert
+```
+
+<details>
+<summary>Building from source instead?</summary>
 
 ```bash
 make build        # local binary ./tizen-cert
 make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (amd64)
 ```
 
-**Run**
-
-```bash
-./tizen-cert
-```
+</details>
 
 | Mode | What happens |
 |---|---|
@@ -68,7 +92,7 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 
 ## 📚 Documentation
 
-- [Documentation site](docs-site/index.html) — landing page with the recorded demo, quick start, wizard reference and FAQ (`docs-site/`, self-contained static HTML).
+- [tizen-cert-cli.vercel.app](https://tizen-cert-cli.vercel.app) — the documentation site: recorded demo, quick start, wizard reference and FAQ (source in `docs-site/`).
 - [Samsung Certificate Issuance — Implementation Spec](docs/SAMSUNG-CERT-API-SPEC.md) — the reverse-engineered API contract this tool implements (endpoints, payloads, PKI details), for anyone extending or auditing it.
 - The demo recording is reproducible: `docs/demo/record.sh` re-drives the wizard (expect + asciinema + agg) and regenerates the GIF/MP4 assets.
 
