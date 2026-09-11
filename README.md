@@ -99,3 +99,7 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 ## 🧪 Status
 
 Single Go module, no CGO. Core logic is unit-tested (`internal/pki`, `internal/profile`, `internal/tui`). Dependencies are limited to Bubble Tea/Bubbles/Lip Gloss for the UI and `go-pkcs12` for the certificate bundles.
+
+## 📄 License
+
+[MIT](LICENSE) © gifflet
