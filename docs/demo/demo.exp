@@ -1,0 +1,69 @@
+#!/usr/bin/expect -f
+# Drives the tizen-cert wizard for the demo recording (see record.sh).
+# Bubble Tea queries the terminal on startup (OSC 11 background color,
+# CSI 6n cursor position) and waits for the answers before rendering,
+# so pause() plays terminal emulator while draining output.
+set timeout 60
+
+set binary [lindex $argv 0]
+if {$binary eq ""} { set binary "./tizen-cert" }
+if {[info exists env(DEMO_PATH)]} { set env(PATH) $env(DEMO_PATH) }
+
+proc pause {secs} {
+    for {set i 0} {$i < $secs} {incr i} {
+        expect {
+            -timeout 1
+            -re {\x1b\]11;\?} { send -- "\x1b]11;rgb:0a0a/1414/1212\x1b\\"; exp_continue -continue_timer }
+            -re {\x1b\[6n}    { send -- "\x1b\[1;1R"; exp_continue -continue_timer }
+            -re {.+}          { exp_continue -continue_timer }
+            timeout {}
+        }
+    }
+}
+
+# Types one character at a time, draining the pty after each keypress so
+# the full-screen redraws reach the recorder instead of filling the buffer.
+proc type {text} {
+    foreach ch [split $text ""] {
+        send -- $ch
+        after 45
+        expect -timeout 0 -re {.+} {} timeout {}
+    }
+}
+
+log_user 0
+spawn $binary
+log_user 1
+pause 3
+
+# Create a new certificate profile
+send "\r"
+pause 2
+
+# Add a DUID manually
+send "a"
+pause 2
+type "TVLAB0EXAMPLEDUID123"
+send "\r"
+pause 2
+
+# Continue -> privilege (Public) -> details
+send "\r"
+pause 2
+send "\r"
+pause 2
+
+type "lab-tvs"
+send "\t"
+expect -timeout 0 -re {.+} {} timeout {}
+type "tv-lab@example.com"
+send "\t"
+expect -timeout 0 -re {.+} {} timeout {}
+type "Str0ngPass1"
+pause 1
+send "\r"
+
+# Samsung sign-in screen (URL + waiting state), then end the demo
+pause 5
+send "\x03"
+expect -timeout 5 eof

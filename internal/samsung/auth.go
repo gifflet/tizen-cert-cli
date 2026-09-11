@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"strings"
 	"time"
@@ -101,6 +103,45 @@ func ParseManualInput(value string) (Session, error) {
 		return Session{}, fmt.Errorf("the user id is required - paste the value as access_token:user_id")
 	}
 	return session, nil
+}
+
+// InSSHSession reports whether the process runs inside an SSH session,
+// where opening a browser is pointless and the sign-in must happen on the
+// user's local machine through a port forward.
+func InSSHSession() bool {
+	return os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_TTY") != ""
+}
+
+// TunnelHint returns the ssh command, ready to paste on the local machine,
+// that makes the local browser's localhost:4794 reach this host's callback
+// listener - which lets the browser flow complete against a remote server.
+func TunnelHint() string {
+	username := "user"
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		username = u.Username
+	}
+	return fmt.Sprintf("ssh -L %d:localhost:%d %s@%s", callbackPort, callbackPort, username, reachableAddress())
+}
+
+// reachableAddress picks the address the user's machine can actually reach.
+// The server IP in SSH_CONNECTION ("client_ip client_port server_ip server_port")
+// is the interface the current session came in through - VPN included - so it
+// beats any hostname (mDNS .local names don't resolve across VPNs). Outside
+// SSH, the default-route IP is used; the hostname is the last resort.
+func reachableAddress() string {
+	if fields := strings.Fields(os.Getenv("SSH_CONNECTION")); len(fields) == 4 {
+		return fields[2]
+	}
+	// Dialing UDP sends no packets; it only resolves the outbound interface.
+	if conn, err := net.Dial("udp", "8.8.8.8:80"); err == nil {
+		ip := conn.LocalAddr().(*net.UDPAddr).IP.String()
+		conn.Close()
+		return ip
+	}
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return h
+	}
+	return "<server>"
 }
 
 // OpenBrowser launches the platform's default browser at the given URL.

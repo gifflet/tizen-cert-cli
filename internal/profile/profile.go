@@ -6,7 +6,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type profilesXML struct {
@@ -38,14 +40,33 @@ type Entry struct {
 	DistributorPasswd string // encrypted form
 }
 
-// DefaultProfilesPath returns the profiles.xml location used by Tizen
-// Studio's data directory in the user home. The file may not exist yet.
+// DefaultProfilesPath returns the profiles.xml the signing tools will read.
+// The tizen CLI can be configured (default.profiles.path) to a different
+// location than the current user's data directory - registering the profile
+// anywhere else makes `tizen package` silently emit UNSIGNED packages - so
+// when the CLI is available its effective path wins over the home default.
 func DefaultProfilesPath() (string, error) {
+	if path := tizenCLIProfilesPath(); path != "" {
+		return path, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(home, "tizen-studio-data", "profile", "profiles.xml"), nil
+}
+
+func tizenCLIProfilesPath() string {
+	out, err := exec.Command("tizen", "cli-config", "-l").Output()
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if value, found := strings.CutPrefix(strings.TrimSpace(line), "default.profiles.path="); found {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 // Write creates or replaces the given profile in profiles.xml, keeping any

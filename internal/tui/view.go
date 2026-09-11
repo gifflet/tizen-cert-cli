@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gifflet/tizen-cert-cli/internal/samsung"
 )
 
 func (m model) View() string {
@@ -113,8 +115,8 @@ func (m model) viewDevices() string {
 
 	if m.addingDUID {
 		b.WriteString("\n  Add DUID or TV IP: " + m.duidInput.View() + "\n")
-		b.WriteString(subtleStyle.Render("  an IP connects via sdb and fetches the DUID automatically;\n") )
-		b.WriteString(subtleStyle.Render("  without sdb, read the DUID on the TV: Support > Contact Samsung (Unique Device ID)\n"))
+		b.WriteString(subtleStyle.Render("  an IP connects via sdb and fetches the DUID automatically") + "\n")
+		b.WriteString(subtleStyle.Render("  no sdb? TV menu: Support > Contact Samsung (Unique Device ID)") + "\n")
 		b.WriteString(subtleStyle.Render("  enter confirm · esc cancel"))
 		return b.String()
 	}
@@ -170,10 +172,22 @@ func (m model) viewLogin() string {
 		b.WriteString(subtleStyle.Render("  starting local callback server..."))
 		return b.String()
 	}
-	b.WriteString("  A browser window was opened for the Samsung sign-in.\n")
-	b.WriteString("  If it did not open, use this URL:\n\n")
+
+	if m.sshMode {
+		b.WriteString("  SSH session detected - the sign-in must happen in a browser on YOUR machine,\n")
+		b.WriteString("  and Samsung posts the result to localhost:4794, so forward that port first.\n\n")
+		b.WriteString("  1. On your local machine, open the tunnel (keep it running):\n")
+		b.WriteString(boxStyle.Render(samsung.TunnelHint()) + "\n\n")
+		b.WriteString("  2. Then open this URL in your local browser ('c' copies it to your clipboard):\n")
+	} else {
+		b.WriteString("  A browser window was opened for the Samsung sign-in.\n")
+		b.WriteString("  If it did not open, use this URL:\n\n")
+	}
 	b.WriteString(boxStyle.Render(m.login.URL) + "\n\n")
-	b.WriteString(subtleStyle.Render("waiting for the sign-in to complete... · m enter token manually · esc back"))
+	if m.urlCopied {
+		b.WriteString(okStyle.Render("  ✓ URL copied to the clipboard (OSC 52)") + "\n\n")
+	}
+	b.WriteString(subtleStyle.Render("waiting for the sign-in to complete... · c copy URL · m enter token manually · esc back"))
 	return b.String()
 }
 

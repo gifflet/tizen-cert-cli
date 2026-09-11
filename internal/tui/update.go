@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/muesli/termenv"
 
 	"github.com/gifflet/tizen-cert-cli/internal/samsung"
 	"github.com/gifflet/tizen-cert-cli/internal/sdb"
@@ -64,7 +66,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.login = msg.server
-		_ = samsung.OpenBrowser(msg.server.URL)
+		m.sshMode = samsung.InSSHSession()
+		if !m.sshMode {
+			if err := samsung.OpenBrowser(msg.server.URL); err != nil {
+				m.sshMode = true
+			}
+		}
 		return m, waitLoginCmd(msg.server)
 
 	case loginDoneMsg:
@@ -375,6 +382,12 @@ func (m model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
+	case "c":
+		if m.login != nil {
+			// OSC 52 reaches the user's local clipboard even over SSH.
+			termenv.NewOutput(os.Stdout).Copy(m.login.URL)
+			m.urlCopied = true
+		}
 	case "m":
 		m.manualMode = true
 		m.tokenInput.Focus()

@@ -97,6 +97,8 @@ type model struct {
 	login      *samsung.LoginServer
 	loginErr   string
 	manualMode bool
+	sshMode    bool
+	urlCopied  bool
 	tokenInput textinput.Model
 	session    samsung.Session
 
