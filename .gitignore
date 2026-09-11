@@ -1,0 +1,11 @@
+/tizen-cert
+/dist/
+*.p12
+*.pwd
+*.pri
+*.csr
+*.crt
+*.cer
+# the embedded Samsung CA certificates are source, not generated output
+!internal/samsung/ca/*.crt
+!internal/samsung/ca/*.cer
