@@ -113,6 +113,8 @@ func (m model) viewDevices() string {
 
 	if m.addingDUID {
 		b.WriteString("\n  Add DUID or TV IP: " + m.duidInput.View() + "\n")
+		b.WriteString(subtleStyle.Render("  an IP connects via sdb and fetches the DUID automatically;\n") )
+		b.WriteString(subtleStyle.Render("  without sdb, read the DUID on the TV: Support > Contact Samsung (Unique Device ID)\n"))
 		b.WriteString(subtleStyle.Render("  enter confirm · esc cancel"))
 		return b.String()
 	}

@@ -46,6 +46,7 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 
 ## Notes
 
+- **DUID sources**: `sdb shell 0 getduid` (what the tool runs, also when you type a TV IP) or the TV's own menu (`Support > Contact Samsung` → "Unique Device ID"). The `duid` field of the TV's REST API (`http://<tv>:8001/api/v2/`) is a **different identifier** (a UUID from the SmartThings space) and is NOT valid for certificates — there is no known conversion.
 - The distributor certificate covers at most 50 DUIDs (Samsung limit for Public level).
 - Partner privilege requires a Samsung account enrolled in the partnership program; issuance fails otherwise.
 - Generated `.p12` files use the legacy DES3 encoding on purpose — Tizen Studio's Java signer cannot read modern AES-encrypted PKCS#12 files.
