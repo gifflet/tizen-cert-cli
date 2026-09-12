@@ -1,0 +1,187 @@
+<!doctype html>
+<!--
+  Open Graph image source for the GitHub repository / docs site.
+  Render (from the repo root):
+
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --hide-scrollbars \
+      --window-size=1280,640 --force-device-scale-factor=2 \
+      --virtual-time-budget=15000 \
+      --screenshot=docs-site/og.png docs/og/og-image.html
+
+  The palette and typography mirror docs-site/style.css.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a1412;
+    --panel: #122220;
+    --border: #1e3a35;
+    --border-strong: #2a4f48;
+    --text: #d7e6e2;
+    --muted: #8aa39d;
+    --faint: #5f7a74;
+    --teal: #2fd4b2;
+    --amber: #e8b649;
+    --danger: #ef7466;
+    --mono: "IBM Plex Mono", monospace;
+    --display: "Bricolage Grotesque", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    position: relative;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+  }
+
+  /* ---- atmosphere: phosphor glow, scanlines, vignette ---- */
+  .glow {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(46% 60% at 78% 18%, rgba(47, 212, 178, 0.16), transparent 70%),
+      radial-gradient(38% 48% at 8% 92%, rgba(47, 212, 178, 0.07), transparent 70%);
+  }
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(47, 212, 178, 0.045) 3px 4px);
+    -webkit-mask-image: radial-gradient(75% 70% at 60% 35%, black, transparent 82%);
+  }
+  .vignette {
+    position: absolute; inset: 0;
+    box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.55);
+  }
+  .frame {
+    position: absolute; inset: 18px;
+    border: 1px solid rgba(42, 79, 72, 0.55);
+    border-radius: 18px;
+  }
+
+  /* ---- left column ---- */
+  .content {
+    position: absolute;
+    left: 64px; top: 58px; bottom: 54px;
+    width: 640px;
+    display: flex; flex-direction: column;
+  }
+  .wordmark {
+    font-family: var(--mono); font-weight: 600; font-size: 25px;
+    letter-spacing: -0.02em;
+  }
+  .wordmark .dollar { color: var(--teal); }
+  .wordmark .cursor {
+    display: inline-block; width: 12px; height: 22px; margin-left: 5px;
+    background: var(--teal); vertical-align: baseline;
+    box-shadow: 0 0 14px rgba(47, 212, 178, 0.8);
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    width: fit-content;
+    font-family: var(--mono); font-size: 14.5px; letter-spacing: 0.1em;
+    color: var(--amber);
+    border: 1px solid rgba(232, 182, 73, 0.38);
+    background: rgba(232, 182, 73, 0.07);
+    border-radius: 99px; padding: 7px 18px;
+    margin-top: 42px;
+  }
+  .tag::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--amber); box-shadow: 0 0 10px var(--amber);
+  }
+  h1 {
+    margin-top: 26px;
+    font-weight: 800; font-size: 67px; line-height: 1.04;
+    letter-spacing: -0.025em;
+  }
+  h1 em { font-style: normal; color: var(--teal); }
+  .sub {
+    margin-top: 22px;
+    font-size: 24px; line-height: 1.45; color: var(--muted);
+    max-width: 21em;
+    font-weight: 400;
+  }
+  .sub strong { color: var(--text); font-weight: 600; }
+  .footer {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 18px;
+    font-family: var(--mono); font-size: 17.5px; color: var(--muted);
+  }
+  .footer .site { color: var(--teal); }
+  .footer .sep { color: var(--border-strong); }
+
+  /* ---- terminal window, bleeding off the bottom-right corner ---- */
+  .term {
+    position: absolute;
+    right: -16px; bottom: -24px;
+    width: 584px;
+    background: #0b100f;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 7px rgba(47, 212, 178, 0.06),
+      0 -18px 90px -20px rgba(47, 212, 178, 0.28),
+      0 30px 80px rgba(0, 0, 0, 0.6);
+    transform: rotate(-1.2deg);
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 9px;
+    padding: 15px 20px; border-bottom: 1px solid var(--border);
+  }
+  .term-bar i { width: 13px; height: 13px; border-radius: 50%; }
+  .term-bar i:nth-child(1) { background: var(--danger); opacity: 0.85; }
+  .term-bar i:nth-child(2) { background: var(--amber); opacity: 0.85; }
+  .term-bar i:nth-child(3) { background: var(--teal); opacity: 0.85; }
+  .term pre {
+    padding: 22px 26px 38px;
+    font-family: var(--mono); font-size: 15.5px; line-height: 1.8;
+    color: #cfe3de;
+  }
+  .term .p { color: var(--teal); }
+  .term .ok { color: var(--teal); font-weight: 600; }
+  .term .k { color: var(--muted); }
+  .term .amber { color: var(--amber); }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="scanlines"></div>
+  <div class="frame"></div>
+
+  <div class="content">
+    <div class="wordmark"><span class="dollar">$</span> tizen-cert<span class="cursor"></span></div>
+    <span class="tag">FOR SAMSUNG TIZEN TVS</span>
+    <h1>TV certificates, <em>without</em> the Certificate&nbsp;Manager</h1>
+    <p class="sub">Author + distributor certificates for up to <strong>50&nbsp;TVs</strong>, signed by Samsung's real servers — <strong>no Tizen&nbsp;Studio</strong>.</p>
+    <div class="footer">
+      <span class="site">tizen-cert-cli.vercel.app</span>
+      <span class="sep">·</span>
+      <span>macOS / Linux / Windows</span>
+      <span class="sep">·</span>
+      <span>MIT</span>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="term-bar"><i></i><i></i><i></i></div>
+    <pre><span class="p">$</span> tizen-cert
+<span class="p">•</span> <span class="k">Requesting author certificate from Samsung</span>
+<span class="p">•</span> <span class="k">Requesting distributor certificate (12 DUIDs)</span>
+<span class="p">•</span> <span class="k">Registering the security profile</span>
+<span class="ok">✓ Certificate profile generated successfully</span>
+
+  <span class="k">Certificates folder:</span>  ~/SamsungCertificate/lab-tvs
+  <span class="k">Profile registered:</span>   profiles.xml
+  <span class="k">Active profile:</span>       <span class="ok">yes</span>
+  <span class="k">Devices covered:</span>      12 DUID(s)
+  <span class="k">Valid until:</span>          <span class="amber">2027-09-11</span></pre>
+  </div>
+
+  <div class="vignette"></div>
+</body>
+</html>
