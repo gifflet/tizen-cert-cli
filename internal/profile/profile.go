@@ -4,6 +4,7 @@ package profile
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -69,25 +70,66 @@ func tizenCLIProfilesPath() string {
 	return ""
 }
 
-// Write creates or replaces the given profile in profiles.xml, keeping any
-// other profiles already registered, and marks it as the active one.
-func Write(path string, entry Entry) error {
-	doc := profilesXML{Active: entry.Name, Version: "3.1"}
+// read parses an existing profiles.xml.
+func read(path string) (profilesXML, error) {
+	var doc profilesXML
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return doc, err
+	}
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		return doc, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return doc, nil
+}
 
-	if data, err := os.ReadFile(path); err == nil {
-		var existing profilesXML
-		if err := xml.Unmarshal(data, &existing); err == nil {
-			for _, p := range existing.Items {
-				if p.Name != entry.Name {
-					doc.Items = append(doc.Items, p)
-				}
-			}
-			if existing.Version != "" {
-				doc.Version = existing.Version
-			}
+// List returns the registered profile names and which one is active.
+// A missing profiles.xml is not an error - there is just nothing yet.
+func List(path string) (names []string, active string, err error) {
+	doc, err := read(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	for _, p := range doc.Items {
+		names = append(names, p.Name)
+	}
+	return names, doc.Active, nil
+}
+
+// SetActive marks an already-registered profile as the active one.
+func SetActive(path, name string) error {
+	doc, err := read(path)
+	if err != nil {
+		return err
+	}
+	if !hasProfile(doc.Items, name) {
+		return fmt.Errorf("profile %q is not registered in %s", name, path)
+	}
+	doc.Active = name
+	return write(path, doc)
+}
+
+// Write creates or replaces the given profile in profiles.xml, keeping any
+// other profiles already registered. With activate the new profile becomes
+// the active one; otherwise the currently active profile keeps that status.
+// Either way the file never ends up without an active profile - the signing
+// tools silently ignore profiles.xml when active points nowhere. Returns the
+// name left active.
+func Write(path string, entry Entry, activate bool) (string, error) {
+	existing, _ := read(path) // a missing or unreadable file starts fresh
+
+	doc := profilesXML{Active: entry.Name, Version: "3.1"}
+	if existing.Version != "" {
+		doc.Version = existing.Version
+	}
+	for _, p := range existing.Items {
+		if p.Name != entry.Name {
+			doc.Items = append(doc.Items, p)
 		}
 	}
-
 	doc.Items = append(doc.Items, profileXML{
 		Name: entry.Name,
 		Items: []profileItemXML{
@@ -96,7 +138,24 @@ func Write(path string, entry Entry) error {
 			{Distributor: "2"},
 		},
 	})
+	if !activate && hasProfile(doc.Items, existing.Active) {
+		doc.Active = existing.Active
+	}
 
+	return doc.Active, write(path, doc)
+}
+
+func hasProfile(items []profileXML, name string) bool {
+	for _, p := range items {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// write serializes the document and atomically replaces profiles.xml.
+func write(path string, doc profilesXML) error {
 	out, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return fmt.Errorf("serializing profiles.xml: %w", err)

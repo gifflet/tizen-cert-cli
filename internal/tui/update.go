@@ -58,6 +58,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renewChoices = msg.choices
 		return m, nil
 
+	case profilesLoadedMsg:
+		m.activeLoading = false
+		m.activeNames = msg.names
+		m.currentActive = msg.active
+		if msg.err != nil {
+			m.activeErr = msg.err.Error()
+		}
+		return m, nil
+
+	case activeSetMsg:
+		if msg.err != nil {
+			m.activeErr = msg.err.Error()
+			return m, nil
+		}
+		m.currentActive = msg.name
+		m.step = stepActiveDone
+		return m, nil
+
 	case loginReadyMsg:
 		if msg.err != nil {
 			m.loginErr = msg.err.Error()
@@ -114,15 +132,19 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateMode(msg)
 	case stepRenewPick:
 		return m.updateRenewPick(msg)
+	case stepActivePick:
+		return m.updateActivePick(msg)
 	case stepDevices:
 		return m.updateDevices(msg)
 	case stepPrivilege:
 		return m.updatePrivilege(msg)
 	case stepDetails:
 		return m.updateDetails(msg)
+	case stepActivate:
+		return m.updateActivate(msg)
 	case stepLogin:
 		return m.updateLogin(msg)
-	case stepDone:
+	case stepDone, stepActiveDone:
 		if msg.String() == "q" || msg.Type == tea.KeyEnter || msg.Type == tea.KeyEsc {
 			return m, tea.Quit
 		}
@@ -133,20 +155,55 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) updateMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "k":
-		m.modeCursor = 0
+		if m.modeCursor > 0 {
+			m.modeCursor--
+		}
 	case "down", "j":
-		m.modeCursor = 1
+		if m.modeCursor < 2 {
+			m.modeCursor++
+		}
 	case "enter":
-		if m.modeCursor == 1 {
+		// Every mode needs profiles.xml: the picker lists it, and the
+		// create/renew flows use the current active profile to decide
+		// whether the activation question is worth asking.
+		switch m.modeCursor {
+		case 1:
 			m.renewing = true
 			m.step = stepRenewPick
-			return m, scanRenewCmd
+			return m, tea.Batch(scanRenewCmd, loadProfilesCmd)
+		case 2:
+			m.step = stepActivePick
+			m.activeLoading = true
+			m.activeErr = ""
+			return m, loadProfilesCmd
+		default:
+			m.step = stepDevices
+			m.scanning = true
+			return m, tea.Batch(scanDevicesCmd, loadProfilesCmd)
 		}
-		m.step = stepDevices
-		m.scanning = true
-		return m, scanDevicesCmd
 	case "q":
 		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m model) updateActivePick(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.activeCursor > 0 {
+			m.activeCursor--
+		}
+	case "down", "j":
+		if m.activeCursor < len(m.activeNames)-1 {
+			m.activeCursor++
+		}
+	case "esc":
+		m.step = stepMode
+	case "enter":
+		if len(m.activeNames) == 0 {
+			return m, nil
+		}
+		return m, setActiveCmd(m.activeNames[m.activeCursor])
 	}
 	return m, nil
 }
@@ -307,12 +364,37 @@ func (m model) updateDetails(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.err = ""
-		m.step = stepLogin
-		return m, startLoginCmd
+		// Only ask about the active profile when there is a real choice:
+		// another profile is active today and would lose that status.
+		name := strings.TrimSpace(m.inputs[fieldName].Value())
+		if m.currentActive == "" || m.currentActive == name {
+			m.makeActive = true
+			m.step = stepLogin
+			return m, startLoginCmd
+		}
+		m.activateCursor = 0
+		m.step = stepActivate
+		return m, nil
 	}
 	var cmd tea.Cmd
 	m.inputs[m.fieldFocus], cmd = m.inputs[m.fieldFocus].Update(msg)
 	return m, cmd
+}
+
+func (m model) updateActivate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		m.activateCursor = 0
+	case "down", "j":
+		m.activateCursor = 1
+	case "esc":
+		m.step = stepDetails
+	case "enter":
+		m.makeActive = m.activateCursor == 0
+		m.step = stepLogin
+		return m, startLoginCmd
+	}
+	return m, nil
 }
 
 func (m model) refocusDetails() model {

@@ -2,7 +2,7 @@
 
 # tizen-cert
 
-**Generate a complete, valid Samsung Tizen TV certificate profile — author and distributor, for any number of TVs — without Tizen Studio's Certificate Manager.**
+**Generate a complete, valid Samsung Tizen TV certificate profile — author and distributor, for up to 50 TVs — without Tizen Studio's Certificate Manager.**
 
 [![GitHub Release](https://img.shields.io/github/v/release/gifflet/tizen-cert-cli)](https://github.com/gifflet/tizen-cert-cli/releases)
 ![Go](https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go&logoColor=white)
@@ -34,9 +34,7 @@ Read them first if you'd rather: [install.sh](https://tizen-cert-cli.vercel.app/
 
 ---
 
-`tizen-cert` is an interactive terminal wizard, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea), that issues a Samsung Tizen TV signing profile end to end — no `tizen` CLI, no manual DUID juggling, no clicking through a GUI.
-
-The point: everything Tizen Studio's Certificate Manager does through dialogs happens here through a few keystrokes, and the result drops straight into `~/tizen-studio-data/profile/profiles.xml`, ready to sign apps.
+`tizen-cert` is an interactive terminal wizard, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea), that does everything Tizen Studio's Certificate Manager does through dialogs — no `tizen` CLI, no manual DUID juggling — in a few keystrokes. The result drops straight into `~/tizen-studio-data/profile/profiles.xml`, ready to sign apps.
 
 ## ✨ Highlights
 
@@ -50,7 +48,7 @@ The point: everything Tizen Studio's Certificate Manager does through dialogs ha
 
 ## Requirements
 
-- A Samsung account — sign-in happens in your browser.
+- A Samsung account — sign-in happens in your browser. Partner-privilege certificates need that account enrolled in Samsung's partner program.
 - `sdb` on your `PATH`, only if you want automatic TV detection (manual DUIDs work without it).
 - TVs in developer mode with the host IP registered — needed for detection and app installs, not for certificate generation itself.
 
@@ -76,6 +74,9 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 |---|---|
 | **Create a new profile** | Select TVs / add DUIDs → choose privilege → name, e-mail, password → Samsung sign-in → done |
 | **Renew an existing profile** | Pick the expired folder → same flow, with DUIDs pre-selected |
+| **Choose the active profile** | Pick any registered profile → it becomes the one the Tizen tools sign with by default — no sign-in needed |
+
+When another profile is already active, creating or renewing also asks whether the new profile should take over as the active one.
 
 `tizen-cert --version` prints the build version.
 
@@ -83,22 +84,15 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 
 | Topic | Detail |
 |---|---|
-| **DUID sources** | `sdb shell 0 getduid` (what the tool runs, also when you type a TV IP) or the TV's own menu — `Support > Contact Samsung` → "Unique Device ID". |
+| **DUID sources** | `sdb shell 0 getduid` (what the tool runs, also when you type a TV IP) or the TV's own menu — `Support > Contact Samsung` → "Unique Device ID". **Not** the `duid` field from the TV's REST API (`http://<tv>:8001/api/v2/`) — that's a different, SmartThings-space UUID, and it isn't valid for certificates. |
 | **Headless / SSH servers** | Samsung posts the sign-in result to `localhost:4794`, so forward that port from your local machine first: `ssh -L 4794:localhost:4794 user@server`, then open the sign-in URL in your **local** browser — the flow completes by itself. The wizard detects SSH sessions, prints this command pre-filled, and `c` copies the URL to your local clipboard (OSC 52). |
-| **The REST API trap** | The `duid` field from the TV's REST API (`http://<tv>:8001/api/v2/`) is a **different identifier** — a UUID from the SmartThings space — and is **not** valid for certificates. There is no known conversion. |
-| **Distributor limit** | Covers at most 50 DUIDs — Samsung's limit for the Public privilege level. |
-| **Partner privilege** | Requires a Samsung account enrolled in the partnership program; issuance fails otherwise. |
-| **`.p12` encoding** | Generated with legacy DES3 on purpose — Tizen Studio's Java signer can't read modern AES-encrypted PKCS#12 files. |
+
+More gotchas — Partner privilege, `.p12` encoding, the 50-TV limit — are covered on the [documentation site](https://tizen-cert-cli.vercel.app).
 
 ## 📚 Documentation
 
-- [tizen-cert-cli.vercel.app](https://tizen-cert-cli.vercel.app) — the documentation site: recorded demo, quick start, wizard reference and FAQ (source in `docs-site/`).
-- [Samsung Certificate Issuance — Implementation Spec](docs/SAMSUNG-CERT-API-SPEC.md) — the reverse-engineered API contract this tool implements (endpoints, payloads, PKI details), for anyone extending or auditing it.
-- The demo recording is reproducible: `docs/demo/record.sh` re-drives the wizard (expect + asciinema + agg) and regenerates the GIF/MP4 assets.
-
-## 🧪 Status
-
-Single Go module, no CGO. Core logic is unit-tested (`internal/pki`, `internal/profile`, `internal/tui`). Dependencies are limited to Bubble Tea/Bubbles/Lip Gloss for the UI and `go-pkcs12` for the certificate bundles.
+- [tizen-cert-cli.vercel.app](https://tizen-cert-cli.vercel.app) — quick start and FAQ on the homepage, full feature list and reference on the Details page (source in `docs-site/`).
+- [Samsung Certificate Issuance — Implementation Spec](docs/SAMSUNG-CERT-API-SPEC.md) — the reverse-engineered API contract this tool implements, for anyone extending or auditing it.
 
 ## 📄 License
 

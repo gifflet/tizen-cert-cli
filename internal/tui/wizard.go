@@ -15,6 +15,7 @@ import (
 
 	"github.com/gifflet/tizen-cert-cli/internal/flow"
 	"github.com/gifflet/tizen-cert-cli/internal/pki"
+	"github.com/gifflet/tizen-cert-cli/internal/profile"
 	"github.com/gifflet/tizen-cert-cli/internal/samsung"
 	"github.com/gifflet/tizen-cert-cli/internal/sdb"
 )
@@ -24,9 +25,12 @@ type step int
 const (
 	stepMode step = iota
 	stepRenewPick
+	stepActivePick
+	stepActiveDone
 	stepDevices
 	stepPrivilege
 	stepDetails
+	stepActivate
 	stepLogin
 	stepIssue
 	stepDone
@@ -78,6 +82,15 @@ type model struct {
 	renewChoices []renewChoice
 	renewCursor  int
 
+	// active profile (stepActivePick and stepActivate)
+	activeNames    []string // profiles registered in profiles.xml
+	currentActive  string   // the one currently marked active
+	activeCursor   int
+	activeLoading  bool
+	activeErr      string
+	activateCursor int
+	makeActive     bool // create flow: the new profile becomes the active one
+
 	// devices
 	rows       []deviceRow
 	devCursor  int
@@ -103,10 +116,10 @@ type model struct {
 	session    samsung.Session
 
 	// issue
-	spin      spinner.Model
-	progress  []string
-	issueErr  string
-	result    *flow.Result
+	spin     spinner.Model
+	progress []string
+	issueErr string
+	result   *flow.Result
 
 	width int
 	err   string
@@ -140,11 +153,11 @@ func New() tea.Model {
 	sp.Spinner = spinner.Dot
 
 	return model{
-		step:      stepMode,
-		duidInput: duid,
+		step:       stepMode,
+		duidInput:  duid,
 		tokenInput: token,
-		inputs:    inputs,
-		spin:      sp,
+		inputs:     inputs,
+		spin:       sp,
 	}
 }
 
@@ -164,6 +177,17 @@ type duidFetchedMsg struct {
 }
 
 type renewScannedMsg struct{ choices []renewChoice }
+
+type profilesLoadedMsg struct {
+	names  []string
+	active string
+	err    error
+}
+
+type activeSetMsg struct {
+	name string
+	err  error
+}
 
 type loginReadyMsg struct {
 	server *samsung.LoginServer
@@ -241,6 +265,25 @@ func scanRenewCmd() tea.Msg {
 	return renewScannedMsg{choices: choices}
 }
 
+func loadProfilesCmd() tea.Msg {
+	path, err := profile.DefaultProfilesPath()
+	if err != nil {
+		return profilesLoadedMsg{err: err}
+	}
+	names, active, err := profile.List(path)
+	return profilesLoadedMsg{names: names, active: active, err: err}
+}
+
+func setActiveCmd(name string) tea.Cmd {
+	return func() tea.Msg {
+		path, err := profile.DefaultProfilesPath()
+		if err != nil {
+			return activeSetMsg{name: name, err: err}
+		}
+		return activeSetMsg{name: name, err: profile.SetActive(path, name)}
+	}
+}
+
 func startLoginCmd() tea.Msg {
 	server, err := samsung.StartLogin()
 	return loginReadyMsg{server: server, err: err}
@@ -290,5 +333,6 @@ func (m model) buildFlowConfig() flow.Config {
 		Privilege:   privilege,
 		DUIDs:       duids,
 		Session:     m.session,
+		MakeActive:  m.makeActive,
 	}
 }

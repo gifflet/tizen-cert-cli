@@ -22,6 +22,7 @@ type Config struct {
 	Privilege   string // "Public" or "Partner"
 	DUIDs       []string
 	Session     samsung.Session
+	MakeActive  bool // make the new profile the active one in profiles.xml
 }
 
 // Result summarizes what was produced, for the final wizard screen.
@@ -29,6 +30,7 @@ type Result struct {
 	ProfileName     string
 	OutputDir       string
 	ProfilesXMLPath string
+	ActiveProfile   string // the profile left active in profiles.xml
 	DUIDCount       int
 	NotAfter        time.Time
 }
@@ -130,13 +132,13 @@ func Run(cfg Config, progress func(string)) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encrypting profile password: %w", err)
 	}
-	err = profile.Write(profilesPath, profile.Entry{
+	active, err := profile.Write(profilesPath, profile.Entry{
 		Name:              cfg.ProfileName,
 		AuthorP12Path:     filepath.Join(outputDir, "author.p12"),
 		AuthorPassword:    encrypted,
 		DistributorP12:    filepath.Join(outputDir, "distributor.p12"),
 		DistributorPasswd: encrypted,
-	})
+	}, cfg.MakeActive)
 	if err != nil {
 		return nil, fmt.Errorf("writing profiles.xml: %w", err)
 	}
@@ -145,6 +147,7 @@ func Run(cfg Config, progress func(string)) (*Result, error) {
 		ProfileName:     cfg.ProfileName,
 		OutputDir:       outputDir,
 		ProfilesXMLPath: profilesPath,
+		ActiveProfile:   active,
 		DUIDCount:       len(cfg.DUIDs),
 		NotAfter:        distCerts[0].NotAfter,
 	}, nil

@@ -17,12 +17,18 @@ func (m model) View() string {
 		b.WriteString(m.viewMode())
 	case stepRenewPick:
 		b.WriteString(m.viewRenewPick())
+	case stepActivePick:
+		b.WriteString(m.viewActivePick())
+	case stepActiveDone:
+		b.WriteString(m.viewActiveDone())
 	case stepDevices:
 		b.WriteString(m.viewDevices())
 	case stepPrivilege:
 		b.WriteString(m.viewPrivilege())
 	case stepDetails:
 		b.WriteString(m.viewDetails())
+	case stepActivate:
+		b.WriteString(m.viewActivate())
 	case stepLogin:
 		b.WriteString(m.viewLogin())
 	case stepIssue:
@@ -51,6 +57,7 @@ func (m model) viewMode() string {
 	b.WriteString("What do you want to do?\n\n")
 	b.WriteString(option(m.modeCursor == 0, "Create a new certificate profile", "generate author + distributor certificates for selected TVs"))
 	b.WriteString(option(m.modeCursor == 1, "Renew an existing profile", "reuse the DUIDs of an expired profile from ~/SamsungCertificate"))
+	b.WriteString(option(m.modeCursor == 2, "Choose the active profile", "switch which registered profile the Tizen tools sign with by default"))
 	b.WriteString("\n" + subtleStyle.Render("↑/↓ move · enter confirm · q quit"))
 	return b.String()
 }
@@ -73,6 +80,47 @@ func (m model) viewRenewPick() string {
 		}
 		b.WriteString(option(i == m.renewCursor, label, desc))
 	}
+	b.WriteString("\n" + subtleStyle.Render("↑/↓ move · enter confirm · esc back"))
+	return b.String()
+}
+
+func (m model) viewActivePick() string {
+	var b strings.Builder
+	b.WriteString("Choose the active signing profile:\n\n")
+	if m.activeLoading {
+		b.WriteString(subtleStyle.Render("  reading profiles.xml...") + "\n")
+	}
+	if m.activeErr != "" {
+		b.WriteString(errStyle.Render("  ! "+m.activeErr) + "\n")
+	}
+	if len(m.activeNames) == 0 && !m.activeLoading {
+		b.WriteString(subtleStyle.Render("  no profiles registered yet - create one first") + "\n")
+	}
+	for i, name := range m.activeNames {
+		desc := "registered profile"
+		if name == m.currentActive {
+			desc = okStyle.Render("currently active")
+		}
+		b.WriteString(option(i == m.activeCursor, name, desc))
+	}
+	b.WriteString("\n" + subtleStyle.Render("↑/↓ move · enter set active · esc back"))
+	return b.String()
+}
+
+func (m model) viewActiveDone() string {
+	var b strings.Builder
+	b.WriteString(okStyle.Render("✓ Active profile set") + "\n\n")
+	b.WriteString("  The Tizen tools now sign with \"" + m.currentActive + "\" by default.\n")
+	b.WriteString("\n" + subtleStyle.Render("q quit"))
+	return b.String()
+}
+
+func (m model) viewActivate() string {
+	name := strings.TrimSpace(m.inputs[fieldName].Value())
+	var b strings.Builder
+	b.WriteString("Make \"" + name + "\" the active signing profile?\n\n")
+	b.WriteString(option(m.activateCursor == 0, "Yes, make it active", "replaces \""+m.currentActive+"\" as the profile the Tizen tools sign with by default"))
+	b.WriteString(option(m.activateCursor == 1, "No, keep \""+m.currentActive+"\" active", "the new profile is still registered and can be selected by name"))
 	b.WriteString("\n" + subtleStyle.Render("↑/↓ move · enter confirm · esc back"))
 	return b.String()
 }
@@ -213,6 +261,11 @@ func (m model) viewDone() string {
 		b.WriteString("  Certificates folder:  " + m.result.OutputDir + "\n")
 		b.WriteString("  Profile registered:   " + m.result.ProfilesXMLPath + "\n")
 		b.WriteString("  Profile name:         " + m.result.ProfileName + "\n")
+		if m.result.ActiveProfile == m.result.ProfileName {
+			b.WriteString("  Active profile:       yes\n")
+		} else {
+			b.WriteString("  Active profile:       no - \"" + m.result.ActiveProfile + "\" is still active\n")
+		}
 		b.WriteString(fmt.Sprintf("  Devices covered:      %d DUID(s)\n", m.result.DUIDCount))
 		b.WriteString("  Valid until:          " + m.result.NotAfter.Format("2006-01-02") + "\n")
 	}

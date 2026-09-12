@@ -25,15 +25,15 @@ import (
 // duidSANPrefix is the string form Samsung embeds per device. The first SAN
 // entry is always the empty "URN:tizen:packageid=".
 const (
-	duidSANPrefix    = "URN:tizen:deviceid="
-	packageIDSAN     = "URN:tizen:packageid="
+	duidSANPrefix = "URN:tizen:deviceid="
+	packageIDSAN  = "URN:tizen:packageid="
 	// MaxDUIDs is Samsung's documented limit per distributor certificate.
 	MaxDUIDs = 50
 )
 
 var (
-	oidSubjectAltName  = asn1.ObjectIdentifier{2, 5, 29, 17}
-	oidEmailAddress    = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
+	oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
+	oidEmailAddress   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
 )
 
 // GenerateKey creates the RSA 2048 key expected by Samsung's issuance APIs.

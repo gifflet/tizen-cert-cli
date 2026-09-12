@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Details — tizen-cert</title>
+<meta name="description" content="Why tizen-cert exists, what it can do, and the exact files and keybindings it produces — the deep-dive companion to the tizen-cert quick start.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="wordmark" href="index.html"><span class="dollar">$</span> tizen-cert<span class="blink"></span></a>
+    <nav class="nav-links">
+      <a href="#why">Why it exists</a>
+      <a href="#features">Features</a>
+      <a href="#reference">Reference</a>
+      <a href="index.html">Home</a>
+      <a class="nav-gh" href="https://github.com/gifflet/tizen-cert-cli">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Details</p>
+    <h2>Why it exists, what it does, and what it produces</h2>
+    <p class="section-sub">
+      The motivation, the feature list, and the reference tables — everything that didn't fit
+      on the <a href="index.html">quick start page</a>. Looking to just install and run it?
+      <a href="index.html#install">Start there</a>.
+    </p>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <p class="kicker">Why it exists</p>
+    <h2>The GUI flow doesn't scale past one developer</h2>
+    <div class="grid-3">
+      <div class="card reveal">
+        <span class="num">01</span>
+        <h3>Certificates expire yearly</h3>
+        <p>Every Samsung author and distributor certificate dies after one year — and when it does, app installs fail with errors that never say "expired certificate".</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">02</span>
+        <h3>The Certificate Manager is GUI-only</h3>
+        <p>Renewing means installing Tizen Studio, clicking through the wizard, and re-collecting every TV's DUID by hand. There is no official headless path.</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">03</span>
+        <h3>Lab TVs multiply</h3>
+        <p>A distributor certificate is bound to specific device DUIDs. Adding one TV to the lab means reissuing — the whole flow, again, for up to 50 devices.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kicker">Features</p>
+    <h2>Small tool, sharp edges filed off</h2>
+    <div class="feat-grid">
+      <div class="feat reveal"><span class="ico">📦</span><h3>Standalone binary</h3><p>Single static binary for macOS, Linux and Windows. No Tizen Studio, no Java, no Python.</p></div>
+      <div class="feat reveal"><span class="ico">🔁</span><h3>Renewal-first</h3><p>Reissues expired profiles reusing their DUIDs — the most common certificate chore becomes two keystrokes.</p></div>
+      <div class="feat reveal"><span class="ico">📺</span><h3>Up to 50 TVs</h3><p>One distributor certificate covers your whole lab, bound to each TV's DUID (Samsung's limit).</p></div>
+      <div class="feat reveal"><span class="ico">🔏</span><h3>Signer-compatible output</h3><p>Legacy-3DES PKCS#12 and the profiles.xml password cipher, byte-compatible with Tizen's Java signer.</p></div>
+      <div class="feat reveal"><span class="ico">🛡️</span><h3>Safe writes</h3><p>profiles.xml is updated atomically and other registered profiles are preserved — never truncated.</p></div>
+      <div class="feat reveal"><span class="ico">🧭</span><h3>Honest errors</h3><p>Rate limits, missing account e-mail, flaky DUID reads — every known failure mode is caught and explained.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="reference">
+  <div class="wrap">
+    <p class="kicker">Reference</p>
+    <h2>What it produces, and the keys that drive it</h2>
+
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Output</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><code>author.p12</code> / <code>author.crt</code></td><td>Your author identity — key + Samsung-issued certificate, VD author CA embedded in the bundle.</td></tr>
+        <tr><td><code>distributor.p12</code> / <code>distributor.crt</code></td><td>The distributor certificate bound to your TVs' DUIDs, Public or Partner CA embedded.</td></tr>
+        <tr><td><code>device-profile.xml</code></td><td>The v1 issuance intermediate, kept for parity with the official extension.</td></tr>
+        <tr><td><code>profiles.xml</code> entry</td><td>The signing profile, registered and set active (or not — the wizard asks when another profile holds that spot, and a dedicated menu entry switches the active profile anytime) — with the password stored in the cipher Tizen's tools expect.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Key</th><th>In the wizard</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd> / <kbd>j</kbd> <kbd>k</kbd></td><td>Move between options and devices</td></tr>
+        <tr><td><kbd>space</kbd></td><td>Select / deselect a TV</td></tr>
+        <tr><td><kbd>a</kbd></td><td>Add a DUID or a TV IP address manually</td></tr>
+        <tr><td><kbd>r</kbd></td><td>Rescan sdb devices (manual entries are kept)</td></tr>
+        <tr><td><kbd>m</kbd></td><td>On the sign-in screen: enter a token manually (headless)</td></tr>
+        <tr><td><kbd>enter</kbd> / <kbd>esc</kbd></td><td>Confirm / go back one step</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span><span style="color:var(--teal)">$</span> tizen-cert — MIT licensed</span>
+    <span class="spacer">
+      <a href="index.html">Home</a>
+      <a href="https://github.com/gifflet/tizen-cert-cli">GitHub</a>
+      <a href="https://github.com/gifflet/tizen-cert-cli/blob/main/docs/SAMSUNG-CERT-API-SPEC.md">API spec</a>
+      <a href="https://github.com/gifflet/tizen-cert-cli/releases">Releases</a>
+    </span>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+
+</body>
+</html>

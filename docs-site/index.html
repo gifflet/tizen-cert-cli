@@ -8,329 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a1412;
-    --bg-raised: #0f1c19;
-    --panel: #122220;
-    --border: #1e3a35;
-    --border-strong: #2a4f48;
-    --text: #d7e6e2;
-    --muted: #8aa39d;
-    --faint: #5f7a74;
-    --teal: #2fd4b2;
-    --teal-deep: #14b394;
-    --amber: #e8b649;
-    --danger: #ef7466;
-    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    --sans: "IBM Plex Sans", system-ui, sans-serif;
-    --display: "Bricolage Grotesque", var(--sans);
-    color-scheme: dark;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #f4f7f6;
-      --bg-raised: #ffffff;
-      --panel: #ffffff;
-      --border: #d5e0dd;
-      --border-strong: #b7c9c4;
-      --text: #142622;
-      --muted: #4d6660;
-      --faint: #7a918b;
-      --teal: #0c8a70;
-      --teal-deep: #0a7a63;
-      --amber: #9a6d0c;
-      --danger: #bf3a2c;
-      color-scheme: light;
-    }
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 16.5px;
-    line-height: 1.65;
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection { background: var(--teal); color: var(--bg); }
-
-  a { color: var(--teal); text-decoration: none; }
-  a:hover { text-decoration: underline; text-underline-offset: 3px; }
-  code, pre, kbd { font-family: var(--mono); }
-
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
-
-  /* ------------------------------------------------ header */
-  header {
-    position: sticky; top: 0; z-index: 50;
-    backdrop-filter: blur(12px);
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
-    border-bottom: 1px solid var(--border);
-  }
-  .nav { display: flex; align-items: center; gap: 28px; height: 60px; }
-  .wordmark {
-    font-family: var(--mono); font-weight: 600; font-size: 17px;
-    color: var(--text); letter-spacing: -0.02em;
-  }
-  .wordmark:hover { text-decoration: none; }
-  .wordmark .dollar { color: var(--teal); }
-  .wordmark .blink {
-    display: inline-block; width: 8px; height: 17px; margin-left: 2px;
-    background: var(--teal); vertical-align: text-bottom;
-    animation: blink 1.15s steps(1) infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
-  .nav-links { display: flex; gap: 22px; margin-left: auto; }
-  .nav-links a { color: var(--muted); font-size: 14.5px; font-weight: 500; }
-  .nav-links a:hover { color: var(--text); text-decoration: none; }
-  .nav-gh {
-    border: 1px solid var(--border-strong); border-radius: 8px;
-    padding: 5px 13px; color: var(--text) !important;
-  }
-  .nav-gh:hover { border-color: var(--teal); }
-  @media (max-width: 720px) { .nav-links a:not(.nav-gh) { display: none; } }
-
-  /* ------------------------------------------------ hero */
-  .hero {
-    position: relative; overflow: hidden;
-    padding: 84px 0 72px;
-    border-bottom: 1px solid var(--border);
-  }
-  /* CRT scanlines + phosphor glow — the TV in the room */
-  .hero::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background:
-      repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--teal) 4%, transparent) 3px 4px);
-    mask-image: radial-gradient(70% 60% at 50% 30%, black, transparent 75%);
-  }
-  .hero::after {
-    content: ""; position: absolute; inset: -30% -10% auto; height: 90%;
-    pointer-events: none;
-    background: radial-gradient(45% 55% at 50% 8%, color-mix(in srgb, var(--teal) 13%, transparent), transparent 70%);
-  }
-  .hero-inner { position: relative; z-index: 1; text-align: center; }
-  .hero .tag {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--amber);
-    border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
-    background: color-mix(in srgb, var(--amber) 7%, transparent);
-    border-radius: 99px; padding: 5px 14px; margin-bottom: 26px;
-  }
-  .hero .tag::before {
-    content: ""; width: 7px; height: 7px; border-radius: 50%;
-    background: var(--amber);
-    box-shadow: 0 0 8px var(--amber);
-    animation: standby 2.4s ease-in-out infinite;
-  }
-  @keyframes standby { 50% { opacity: 0.35; box-shadow: 0 0 2px var(--amber); } }
-  h1 {
-    font-family: var(--display);
-    font-size: clamp(38px, 6vw, 64px);
-    font-weight: 800; line-height: 1.04; letter-spacing: -0.025em;
-    max-width: 17ch; margin: 0 auto;
-  }
-  h1 em { font-style: normal; color: var(--teal); }
-  .hero p.sub {
-    max-width: 56ch; margin: 22px auto 0; color: var(--muted); font-size: 18px;
-  }
-  /* install command - the hero's centerpiece */
-  .install-box { max-width: 740px; margin: 34px auto 0; }
-  .install-tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
-  .install-tab {
-    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.04em;
-    color: var(--muted); background: none; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px;
-  }
-  .install-tab.active { color: var(--teal); border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
-  .install-cmd[hidden] { display: none; }
-  .install-cmd {
-    display: flex; align-items: center; gap: 12px;
-    background: #0b100f; border: 1px solid var(--teal);
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--teal) 8%, transparent),
-                0 14px 40px -18px color-mix(in srgb, var(--teal) 55%, transparent);
-    border-radius: 12px; padding: 15px 18px;
-  }
-  @media (prefers-color-scheme: light) { .install-cmd { background: #0f1c19; } }
-  .install-cmd code {
-    flex: 1; text-align: left; font-size: 14.5px; color: #cfe3de;
-    overflow-x: auto; white-space: nowrap;
-  }
-  .install-cmd .p { color: var(--teal); user-select: none; }
-  .copy-btn {
-    flex: none; font-family: var(--mono); font-size: 12px; cursor: pointer;
-    color: var(--teal); background: none;
-    border: 1px solid var(--border-strong); border-radius: 7px; padding: 5px 12px;
-  }
-  .copy-btn:hover { border-color: var(--teal); }
-  .install-note { margin-top: 11px; font-size: 13px; color: var(--faint); }
-  .cta-row { display: flex; gap: 14px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-weight: 600; font-size: 15.5px; border-radius: 10px;
-    padding: 11px 22px; transition: transform 0.12s ease, box-shadow 0.12s ease;
-  }
-  .btn:hover { text-decoration: none; transform: translateY(-1px); }
-  .btn-primary {
-    background: var(--teal); color: #06231c;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--teal) 60%, transparent),
-                0 8px 28px -10px color-mix(in srgb, var(--teal) 55%, transparent);
-  }
-  .btn-primary:hover { box-shadow: 0 0 0 1px var(--teal), 0 12px 34px -10px color-mix(in srgb, var(--teal) 70%, transparent); }
-  .btn-ghost { border: 1px solid var(--border-strong); color: var(--text); }
-  .btn-ghost:hover { border-color: var(--teal); }
-
-  .demo-frame {
-    margin: 56px auto 0; max-width: 920px;
-    border: 1px solid var(--border-strong); border-radius: 14px;
-    overflow: hidden; background: #101614;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.6),
-                0 0 0 6px color-mix(in srgb, var(--teal) 5%, transparent);
-  }
-  .demo-frame video, .demo-frame img { display: block; width: 100%; height: auto; }
-  .demo-caption { margin-top: 14px; font-size: 14px; color: var(--faint); }
-
-  /* ------------------------------------------------ sections */
-  section { padding: 78px 0; border-bottom: 1px solid var(--border); }
-  .kicker {
-    font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--teal); margin-bottom: 12px;
-  }
-  h2 {
-    font-family: var(--display); font-weight: 800;
-    font-size: clamp(26px, 3.6vw, 36px); letter-spacing: -0.02em; line-height: 1.15;
-  }
-  .section-sub { color: var(--muted); max-width: 62ch; margin-top: 12px; }
-
-  /* why cards */
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 40px; }
-  @media (max-width: 820px) { .grid-3 { grid-template-columns: 1fr; } }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 26px 24px;
-  }
-  .card h3 { font-family: var(--display); font-size: 19px; font-weight: 600; margin-bottom: 9px; }
-  .card p { color: var(--muted); font-size: 15px; }
-  .card .num {
-    font-family: var(--mono); color: var(--amber); font-size: 13px; margin-bottom: 14px; display: block;
-  }
-
-  /* steps rail */
-  .steps { margin-top: 44px; display: grid; gap: 0; position: relative; }
-  .step {
-    display: grid; grid-template-columns: 56px 1fr; gap: 18px;
-    padding: 22px 0; border-top: 1px dashed var(--border);
-  }
-  .step:first-child { border-top: none; }
-  .step .dot {
-    width: 40px; height: 40px; border-radius: 12px;
-    display: grid; place-items: center;
-    font-family: var(--mono); font-weight: 600; color: var(--teal);
-    border: 1px solid var(--border-strong);
-    background: var(--bg-raised);
-  }
-  .step h3 { font-size: 17px; font-weight: 600; }
-  .step p { color: var(--muted); font-size: 15px; margin-top: 4px; }
-  .step code { color: var(--teal); font-size: 0.92em; }
-
-  /* features */
-  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 40px; }
-  @media (max-width: 900px) { .feat-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 620px) { .feat-grid { grid-template-columns: 1fr; } }
-  .feat {
-    border: 1px solid var(--border); border-radius: 12px; padding: 20px;
-    background: linear-gradient(180deg, var(--panel), transparent);
-  }
-  .feat .ico { font-size: 19px; margin-bottom: 10px; display: block; }
-  .feat h3 { font-size: 15.5px; font-weight: 600; margin-bottom: 6px; }
-  .feat p { font-size: 14px; color: var(--muted); }
-
-  /* quick start */
-  .term {
-    background: #0b100f; border: 1px solid var(--border-strong);
-    border-radius: 12px; margin-top: 28px; overflow: hidden;
-  }
-  @media (prefers-color-scheme: light) { .term { background: #0f1c19; } }
-  .term-bar {
-    display: flex; align-items: center; gap: 7px;
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
-  }
-  .term-bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--border-strong); }
-  .term-bar i:first-child { background: var(--danger); opacity: .8; }
-  .term-bar i:nth-child(2) { background: var(--amber); opacity: .8; }
-  .term-bar i:nth-child(3) { background: var(--teal); opacity: .8; }
-  .term-bar span { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--faint); }
-  .term pre {
-    padding: 20px 22px; overflow-x: auto;
-    font-size: 14px; line-height: 1.9; color: #cfe3de;
-  }
-  .term .c { color: #5f7a74; }
-  .term .p { color: var(--teal); user-select: none; }
-
-  /* reference tables */
-  table { width: 100%; border-collapse: collapse; margin-top: 26px; font-size: 14.5px; }
-  th {
-    text-align: left; font-family: var(--mono); font-size: 12px;
-    text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint);
-    padding: 0 14px 10px; border-bottom: 1px solid var(--border-strong);
-  }
-  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  td:first-child { white-space: nowrap; }
-  td code, kbd {
-    background: var(--bg-raised); border: 1px solid var(--border);
-    border-radius: 6px; padding: 2px 8px; font-size: 13px;
-  }
-  kbd { color: var(--teal); }
-  .table-scroll { overflow-x: auto; }
-
-  /* seal */
-  .seal {
-    margin-top: 44px; display: flex; gap: 20px; align-items: center;
-    border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
-    background: color-mix(in srgb, var(--amber) 5%, transparent);
-    border-radius: 14px; padding: 22px 26px;
-  }
-  .seal .stamp {
-    flex: none; width: 62px; height: 62px; border-radius: 50%;
-    border: 2px dashed var(--amber); display: grid; place-items: center;
-    font-size: 26px;
-  }
-  .seal p { font-size: 15px; color: var(--muted); }
-  .seal strong { color: var(--text); }
-
-  /* faq */
-  details {
-    border: 1px solid var(--border); border-radius: 12px;
-    margin-top: 12px; background: var(--panel);
-  }
-  summary {
-    cursor: pointer; padding: 17px 20px; font-weight: 600; font-size: 15.5px;
-    list-style: none; display: flex; align-items: center; gap: 12px;
-  }
-  summary::before {
-    content: "+"; font-family: var(--mono); color: var(--teal);
-    font-size: 18px; transition: transform 0.15s ease;
-  }
-  details[open] summary::before { transform: rotate(45deg); }
-  details .body { padding: 0 20px 18px 46px; color: var(--muted); font-size: 15px; }
-  details .body code { color: var(--teal); font-size: 0.92em; }
-
-  /* footer */
-  footer { padding: 44px 0 60px; }
-  .foot { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; color: var(--faint); font-size: 14px; }
-  .foot .spacer { margin-left: auto; display: flex; gap: 18px; }
-
-  /* reveal on scroll */
-  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .5s ease, transform .5s ease; }
-  .reveal.in { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1; transform: none; transition: none; }
-    .blink, .tag::before { animation: none !important; }
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -340,8 +18,8 @@
     <nav class="nav-links">
       <a href="#how">How it works</a>
       <a href="#quickstart">Quick start</a>
-      <a href="#reference">Reference</a>
       <a href="#faq">FAQ</a>
+      <a href="details.html">Details</a>
       <a class="nav-gh" href="https://github.com/gifflet/tizen-cert-cli">GitHub</a>
     </nav>
   </div>
@@ -383,30 +61,6 @@
     <p class="demo-caption">A real recording, not a mock-up — the wizard as it runs in the terminal.</p>
   </div>
 </div>
-
-<section id="why">
-  <div class="wrap">
-    <p class="kicker">Why it exists</p>
-    <h2>The GUI flow doesn't scale past one developer</h2>
-    <div class="grid-3">
-      <div class="card reveal">
-        <span class="num">01</span>
-        <h3>Certificates expire yearly</h3>
-        <p>Every Samsung author and distributor certificate dies after one year — and when it does, app installs fail with errors that never say "expired certificate".</p>
-      </div>
-      <div class="card reveal">
-        <span class="num">02</span>
-        <h3>The Certificate Manager is GUI-only</h3>
-        <p>Renewing means installing Tizen Studio, clicking through the wizard, and re-collecting every TV's DUID by hand. There is no official headless path.</p>
-      </div>
-      <div class="card reveal">
-        <span class="num">03</span>
-        <h3>Lab TVs multiply</h3>
-        <p>A distributor certificate is bound to specific device DUIDs. Adding one TV to the lab means reissuing — the whole flow, again, for up to 50 devices.</p>
-      </div>
-    </div>
-  </div>
-</section>
 
 <section id="how">
   <div class="wrap">
@@ -450,21 +104,6 @@
   </div>
 </section>
 
-<section id="features">
-  <div class="wrap">
-    <p class="kicker">Features</p>
-    <h2>Small tool, sharp edges filed off</h2>
-    <div class="feat-grid">
-      <div class="feat reveal"><span class="ico">📦</span><h3>Standalone binary</h3><p>Single static binary for macOS, Linux and Windows. No Tizen Studio, no Java, no Python.</p></div>
-      <div class="feat reveal"><span class="ico">🔁</span><h3>Renewal-first</h3><p>Reissues expired profiles reusing their DUIDs — the most common certificate chore becomes two keystrokes.</p></div>
-      <div class="feat reveal"><span class="ico">📺</span><h3>Up to 50 TVs</h3><p>One distributor certificate covers your whole lab, bound to each TV's DUID (Samsung's limit).</p></div>
-      <div class="feat reveal"><span class="ico">🔏</span><h3>Signer-compatible output</h3><p>Legacy-3DES PKCS#12 and the profiles.xml password cipher, byte-compatible with Tizen's Java signer.</p></div>
-      <div class="feat reveal"><span class="ico">🛡️</span><h3>Safe writes</h3><p>profiles.xml is updated atomically and other registered profiles are preserved — never truncated.</p></div>
-      <div class="feat reveal"><span class="ico">🧭</span><h3>Honest errors</h3><p>Rate limits, missing account e-mail, flaky DUID reads — every known failure mode is caught and explained.</p></div>
-    </div>
-  </div>
-</section>
-
 <section id="quickstart">
   <div class="wrap">
     <p class="kicker">Quick start</p>
@@ -480,39 +119,6 @@
 <span class="c"># 3. sign and install with the profile it registered</span>
 <span class="p">$</span> tizen package -t wgt -s lab-tvs -- ./app
 <span class="p">$</span> tizen install -n app.wgt -s &lt;TV_IP&gt;:26101</pre>
-    </div>
-  </div>
-</section>
-
-<section id="reference">
-  <div class="wrap">
-    <p class="kicker">Reference</p>
-    <h2>What it produces, and the keys that drive it</h2>
-
-    <div class="table-scroll">
-    <table>
-      <thead><tr><th>Output</th><th>What it is</th></tr></thead>
-      <tbody>
-        <tr><td><code>author.p12</code> / <code>author.crt</code></td><td>Your author identity — key + Samsung-issued certificate, VD author CA embedded in the bundle.</td></tr>
-        <tr><td><code>distributor.p12</code> / <code>distributor.crt</code></td><td>The distributor certificate bound to your TVs' DUIDs, Public or Partner CA embedded.</td></tr>
-        <tr><td><code>device-profile.xml</code></td><td>The v1 issuance intermediate, kept for parity with the official extension.</td></tr>
-        <tr><td><code>profiles.xml</code> entry</td><td>The signing profile, registered and set active — with the password stored in the cipher Tizen's tools expect.</td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <div class="table-scroll">
-    <table>
-      <thead><tr><th>Key</th><th>In the wizard</th></tr></thead>
-      <tbody>
-        <tr><td><kbd>↑</kbd> <kbd>↓</kbd> / <kbd>j</kbd> <kbd>k</kbd></td><td>Move between options and devices</td></tr>
-        <tr><td><kbd>space</kbd></td><td>Select / deselect a TV</td></tr>
-        <tr><td><kbd>a</kbd></td><td>Add a DUID or a TV IP address manually</td></tr>
-        <tr><td><kbd>r</kbd></td><td>Rescan sdb devices (manual entries are kept)</td></tr>
-        <tr><td><kbd>m</kbd></td><td>On the sign-in screen: enter a token manually (headless)</td></tr>
-        <tr><td><kbd>enter</kbd> / <kbd>esc</kbd></td><td>Confirm / go back one step</td></tr>
-      </tbody>
-    </table>
     </div>
   </div>
 </section>
@@ -549,6 +155,7 @@
   <div class="wrap foot">
     <span><span style="color:var(--teal)">$</span> tizen-cert — MIT licensed</span>
     <span class="spacer">
+      <a href="details.html">Details</a>
       <a href="https://github.com/gifflet/tizen-cert-cli">GitHub</a>
       <a href="https://github.com/gifflet/tizen-cert-cli/blob/main/docs/SAMSUNG-CERT-API-SPEC.md">API spec</a>
       <a href="https://github.com/gifflet/tizen-cert-cli/releases">Releases</a>
@@ -556,13 +163,8 @@
   </div>
 </footer>
 
+<script src="script.js"></script>
 <script>
-  const io = new IntersectionObserver(
-    entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
-    { threshold: 0.12 }
-  );
-  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
-
   document.querySelectorAll(".install-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       document.querySelectorAll(".install-tab").forEach(t => t.classList.toggle("active", t === tab));
