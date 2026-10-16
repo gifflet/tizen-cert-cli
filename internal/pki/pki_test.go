@@ -2,9 +2,13 @@ package pki
 
 import (
 	"bytes"
+	cryptorand "crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
+	"math/big"
 	"testing"
+	"time"
 )
 
 func TestCreateDistributorCSRCarriesDUIDs(t *testing.T) {
@@ -98,5 +102,68 @@ func TestCreateAuthorCSR(t *testing.T) {
 	}
 	if csr.SignatureAlgorithm != x509.SHA512WithRSA {
 		t.Errorf("signature algorithm = %v, want SHA512WithRSA", csr.SignatureAlgorithm)
+	}
+}
+
+func TestEncodeDecodeP12RoundTrip(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(cryptorand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const password = "TestPass1"
+	p12Data, err := EncodeP12(key, cert, nil, password)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotKey, gotCert, _, err := DecodeP12(p12Data, password)
+	if err != nil {
+		t.Fatalf("DecodeP12: %v", err)
+	}
+	if gotKey.D.Cmp(key.D) != 0 {
+		t.Error("decoded private key does not match original")
+	}
+	if !gotCert.Equal(cert) {
+		t.Error("decoded certificate does not match original")
+	}
+}
+
+func TestDecodeP12WrongPassword(t *testing.T) {
+	key, err := GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
+	}
+	certDER, err := x509.CreateCertificate(cryptorand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, _ := x509.ParseCertificate(certDER)
+	p12Data, err := EncodeP12(key, cert, nil, "CorrectPass1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := DecodeP12(p12Data, "WrongPass1"); err == nil {
+		t.Fatal("expected error for wrong password, got nil")
 	}
 }

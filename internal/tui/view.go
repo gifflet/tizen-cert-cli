@@ -268,6 +268,11 @@ func (m model) viewDone() string {
 		}
 		b.WriteString(fmt.Sprintf("  Devices covered:      %d DUID(s)\n", m.result.DUIDCount))
 		b.WriteString("  Valid until:          " + m.result.NotAfter.Format("2006-01-02") + "\n")
+		if m.result.AuthorReused {
+			b.WriteString("  Author certificate:   " + okStyle.Render("reused") + " - installed apps can be updated in place\n")
+		} else if m.renewing {
+			b.WriteString("  Author certificate:   " + errStyle.Render("new") + " - uninstall the app from the TVs before installing a package signed with it\n")
+		}
 	}
 	b.WriteString("\n" + subtleStyle.Render("q quit"))
 	return b.String()

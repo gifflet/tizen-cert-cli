@@ -33,24 +33,67 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.scanErr = msg.err.Error()
 		}
-		m.rows = append(msg.rows, m.rows...)
+		// The new scan replaces the previous one; manual, renewed and
+		// address-added rows stay. A TV seen before keeps its selection.
+		var kept []deviceRow
+		prevSelected := make(map[string]bool)
+		for _, r := range m.rows {
+			if r.Scanned && !r.Manual {
+				prevSelected[r.serial()] = r.Selected
+				continue
+			}
+			kept = append(kept, r)
+		}
+		for i := range msg.rows {
+			m.nextRowID++
+			msg.rows[i].ID = m.nextRowID
+			msg.rows[i].Scanned = true
+			if sel, ok := prevSelected[msg.rows[i].serial()]; ok {
+				msg.rows[i].Selected = sel
+			}
+		}
+		m.rows = append(msg.rows, kept...)
+		m.clampDevCursor()
 		var cmds []tea.Cmd
-		for i, r := range m.rows {
-			if !r.Manual && r.DUID == "" && r.Err == "" {
-				serial := strings.Fields(r.Label)[0]
-				cmds = append(cmds, fetchDUIDCmd(i, serial))
+		for _, r := range msg.rows {
+			if r.DUID == "" && r.Err == "" {
+				cmds = append(cmds, fetchDUIDCmd(r.ID, r.serial()))
 			}
 		}
 		return m, tea.Batch(cmds...)
 
 	case duidFetchedMsg:
-		if msg.index < len(m.rows) {
-			if msg.err != nil {
-				m.rows[msg.index].Err = msg.err.Error()
-				m.rows[msg.index].Selected = false
-			} else {
-				m.rows[msg.index].DUID = msg.duid
+		// Locate the row by stable ID; it may have been removed by a prior merge.
+		target := -1
+		for i, r := range m.rows {
+			if r.ID == msg.rowID {
+				target = i
+				break
 			}
+		}
+		if target < 0 {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.rows[target].Err = msg.err.Error()
+			m.rows[target].Selected = false
+			return m, nil
+		}
+		// If another row already carries this DUID, merge and drop it.
+		duplicate := -1
+		for i, r := range m.rows {
+			if i != target && r.DUID == msg.duid {
+				duplicate = i
+				break
+			}
+		}
+		m.rows[target].DUID = msg.duid
+		if duplicate >= 0 {
+			m.rows[target].Selected = m.rows[target].Selected || m.rows[duplicate].Selected
+			// Inherit Manual so a later rescan without this TV keeps the DUID.
+			m.rows[target].Manual = m.rows[target].Manual || m.rows[duplicate].Manual
+			m.rows = append(m.rows[:duplicate], m.rows[duplicate+1:]...)
+			m.clampDevCursor()
 		}
 		return m, nil
 
@@ -177,6 +220,9 @@ func (m model) updateMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.activeErr = ""
 			return m, loadProfilesCmd
 		default:
+			// A renewal abandoned with esc must not leak its author into a new profile.
+			m.renewing = false
+			m.renewDir = ""
 			m.step = stepDevices
 			m.scanning = true
 			return m, tea.Batch(scanDevicesCmd, loadProfilesCmd)
@@ -230,14 +276,29 @@ func (m model) updateRenewPick(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Pre-populate the wizard with everything the old profile knew:
 		// its DUIDs become manual rows and its folder name the default.
+		// Guard against re-entry and certs that already have duplicate DUIDs.
+		existing := make(map[string]bool)
+		for _, r := range m.rows {
+			if r.DUID != "" {
+				existing[r.DUID] = true
+			}
+		}
+		seen := make(map[string]bool)
 		for _, duid := range choice.Info.DUIDs {
+			if duid == "" || existing[duid] || seen[duid] {
+				continue
+			}
+			seen[duid] = true
+			m.nextRowID++
 			m.rows = append(m.rows, deviceRow{
+				ID:       m.nextRowID,
 				Label:    "renewed: " + truncate(duid, 40),
 				DUID:     duid,
 				Manual:   true,
 				Selected: true,
 			})
 		}
+		m.renewDir = choice.Dir
 		m.inputs[fieldName].SetValue(strings.TrimSuffix(filepathBase(choice.Dir), "/"))
 		m.step = stepDevices
 		m.scanning = true
@@ -259,21 +320,23 @@ func (m model) updateDevices(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// An IP address means "connect via sdb and fetch the DUID";
 			// anything else is treated as a literal DUID.
 			if looksLikeAddress(value) {
-				index := len(m.rows)
-				m.rows = append(m.rows, deviceRow{Label: value + " (connecting...)", Selected: true})
+				m.nextRowID++
+				rowID := m.nextRowID
+				m.rows = append(m.rows, deviceRow{ID: rowID, Label: value + " (connecting...)", Selected: true})
 				return m, func() tea.Msg {
 					if err := sdb.Connect(value); err != nil {
-						return duidFetchedMsg{index: index, err: err}
+						return duidFetchedMsg{rowID: rowID, err: err}
 					}
 					serial := value
 					if !strings.Contains(serial, ":") {
 						serial += ":26101"
 					}
 					duid, err := sdb.FetchDUID(serial)
-					return duidFetchedMsg{index: index, duid: duid, err: err}
+					return duidFetchedMsg{rowID: rowID, duid: duid, err: err}
 				}
 			}
-			m.rows = append(m.rows, deviceRow{Label: "manual: " + truncate(value, 40), DUID: value, Manual: true, Selected: true})
+			m.nextRowID++
+			m.rows = append(m.rows, deviceRow{ID: m.nextRowID, Label: "manual: " + truncate(value, 40), DUID: value, Manual: true, Selected: true})
 			return m, nil
 		case tea.KeyEsc:
 			m.addingDUID = false
@@ -315,6 +378,7 @@ func (m model) updateDevices(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.rows = manual
+		m.clampDevCursor()
 		return m, scanDevicesCmd
 	case "esc":
 		m.step = stepMode
@@ -490,6 +554,13 @@ func (m model) selectedDUIDCount() int {
 		}
 	}
 	return count
+}
+
+// clampDevCursor keeps the devices cursor on a row after the list shrinks.
+func (m *model) clampDevCursor() {
+	if m.devCursor > len(m.rows)-1 {
+		m.devCursor = max(len(m.rows)-1, 0)
+	}
 }
 
 func looksLikeAddress(s string) bool {

@@ -4,7 +4,9 @@
 package flow
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,13 +18,14 @@ import (
 
 // Config is everything the wizard collected.
 type Config struct {
-	ProfileName string
-	Email       string
-	Password    string
-	Privilege   string // "Public" or "Partner"
-	DUIDs       []string
-	Session     samsung.Session
-	MakeActive  bool // make the new profile the active one in profiles.xml
+	ProfileName     string
+	Email           string
+	Password        string
+	Privilege       string // "Public" or "Partner"
+	DUIDs           []string
+	Session         samsung.Session
+	MakeActive      bool   // make the new profile the active one in profiles.xml
+	ReuseAuthorFrom string // if set, try to reuse author.p12 from this directory
 }
 
 // Result summarizes what was produced, for the final wizard screen.
@@ -33,6 +36,47 @@ type Result struct {
 	ActiveProfile   string // the profile left active in profiles.xml
 	DUIDCount       int
 	NotAfter        time.Time
+	AuthorReused    bool
+}
+
+// reusableAuthor holds the raw bytes of an existing author credential to be
+// carried forward into a renewal without requesting a new certificate.
+type reusableAuthor struct {
+	P12Bytes []byte
+	CRTBytes []byte // may be nil if author.crt was not present
+}
+
+// loadReusableAuthor tries to load and decode author.p12 from dir.
+// Returns (author, false, nil) when the author can be reused.
+// Returns (nil, true, nil) when the author should be regenerated (not found or expired).
+// Returns (nil, false, err) when the file is unreadable, corrupt or the password is wrong.
+func loadReusableAuthor(dir, password string, now time.Time) (*reusableAuthor, bool, error) {
+	p12Path := filepath.Join(dir, "author.p12")
+	data, err := os.ReadFile(p12Path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("reading %s: %w", p12Path, err)
+	}
+	_, cert, _, decErr := pki.DecodeP12(data, password)
+	if decErr != nil {
+		return nil, false, fmt.Errorf(
+			"cannot open %s: the password must match the one used when the profile was created "+
+				"(to issue a new author instead, create a new profile with the same name and "+
+				"reinstall the apps on the TVs): %w",
+			p12Path, decErr,
+		)
+	}
+	if now.After(cert.NotAfter) {
+		// Expired → regenerate
+		return nil, true, nil
+	}
+	crtBytes, _ := os.ReadFile(filepath.Join(dir, "author.crt"))
+	return &reusableAuthor{
+		P12Bytes: data,
+		CRTBytes: crtBytes,
+	}, false, nil
 }
 
 // Run executes the whole flow, reporting each phase through progress.
@@ -47,24 +91,56 @@ func Run(cfg Config, progress func(string)) (*Result, error) {
 	}
 
 	// --- author certificate ---
-	progress("Generating author key and CSR")
-	authorKey, err := pki.GenerateKey()
-	if err != nil {
-		return nil, fmt.Errorf("generating author key: %w", err)
-	}
-	authorCSR, err := pki.CreateAuthorCSR(authorKey, cfg.ProfileName)
-	if err != nil {
-		return nil, err
+	var (
+		authorReused   bool
+		authorP12Bytes []byte
+		authorCRTBytes []byte
+		authorCSRBytes []byte
+	)
+
+	if cfg.ReuseAuthorFrom != "" {
+		progress("Checking existing author certificate")
+		ra, regen, loadErr := loadReusableAuthor(cfg.ReuseAuthorFrom, cfg.Password, time.Now())
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if !regen {
+			authorReused = true
+			authorP12Bytes = ra.P12Bytes
+			authorCRTBytes = ra.CRTBytes
+		} else {
+			progress("Author certificate expired or not found — generating new author certificate")
+		}
 	}
 
-	progress("Requesting author certificate from Samsung")
-	authorCertPEM, err := samsung.IssueAuthor(cfg.Session, authorCSR)
-	if err != nil {
-		return nil, fmt.Errorf("issuing author certificate: %w", err)
-	}
-	authorCerts, err := pki.ParseCertificatesPEM(authorCertPEM)
-	if err != nil {
-		return nil, fmt.Errorf("parsing author certificate: %w", err)
+	if !authorReused {
+		progress("Generating author key and CSR")
+		authorKey, err := pki.GenerateKey()
+		if err != nil {
+			return nil, fmt.Errorf("generating author key: %w", err)
+		}
+		authorCSR, err := pki.CreateAuthorCSR(authorKey, cfg.ProfileName)
+		if err != nil {
+			return nil, err
+		}
+		authorCSRBytes = authorCSR
+
+		progress("Requesting author certificate from Samsung")
+		authorCertPEM, err := samsung.IssueAuthor(cfg.Session, authorCSR)
+		if err != nil {
+			return nil, fmt.Errorf("issuing author certificate: %w", err)
+		}
+		authorCerts, err := pki.ParseCertificatesPEM(authorCertPEM)
+		if err != nil {
+			return nil, fmt.Errorf("parsing author certificate: %w", err)
+		}
+		authorChain := append(authorCerts[1:], samsung.AuthorCAChain()...)
+		authorP12, err := pki.EncodeP12(authorKey, authorCerts[0], authorChain, cfg.Password)
+		if err != nil {
+			return nil, fmt.Errorf("building author.p12: %w", err)
+		}
+		authorP12Bytes = authorP12
+		authorCRTBytes = authorCertPEM
 	}
 
 	// --- distributor certificate ---
@@ -96,29 +172,43 @@ func Run(cfg Config, progress func(string)) (*Result, error) {
 
 	// --- write artifacts ---
 	progress("Writing certificates and PKCS#12 bundles")
-	authorChain := append(authorCerts[1:], samsung.AuthorCAChain()...)
-	authorP12, err := pki.EncodeP12(authorKey, authorCerts[0], authorChain, cfg.Password)
-	if err != nil {
-		return nil, fmt.Errorf("building author.p12: %w", err)
-	}
+
 	distChain := append(distCerts[1:], samsung.DistributorCAChain(cfg.Privilege)...)
 	distP12, err := pki.EncodeP12(distKey, distCerts[0], distChain, cfg.Password)
 	if err != nil {
 		return nil, fmt.Errorf("building distributor.p12: %w", err)
 	}
 
-	files := map[string][]byte{
-		"author.crt":         authorCertPEM,
-		"author.p12":         authorP12,
-		"author.csr":         authorCSR,
+	// Distributor files are always (re)written.
+	distFiles := map[string][]byte{
 		"distributor.crt":    distCertPEM,
 		"distributor.p12":    distP12,
 		"distributor.csr":    distCSR,
 		"device-profile.xml": deviceProfile,
 	}
-	for name, data := range files {
+	for name, data := range distFiles {
 		if err := os.WriteFile(filepath.Join(outputDir, name), data, 0o600); err != nil {
 			return nil, fmt.Errorf("writing %s: %w", name, err)
+		}
+	}
+
+	// Author files: skip when reusing from the same directory to avoid
+	// overwriting files that are identical by definition.
+	sameDir := cfg.ReuseAuthorFrom != "" &&
+		filepath.Clean(outputDir) == filepath.Clean(cfg.ReuseAuthorFrom)
+	if !authorReused || !sameDir {
+		if err := os.WriteFile(filepath.Join(outputDir, "author.p12"), authorP12Bytes, 0o600); err != nil {
+			return nil, fmt.Errorf("writing author.p12: %w", err)
+		}
+		if len(authorCRTBytes) > 0 {
+			if err := os.WriteFile(filepath.Join(outputDir, "author.crt"), authorCRTBytes, 0o600); err != nil {
+				return nil, fmt.Errorf("writing author.crt: %w", err)
+			}
+		}
+	}
+	if len(authorCSRBytes) > 0 {
+		if err := os.WriteFile(filepath.Join(outputDir, "author.csr"), authorCSRBytes, 0o600); err != nil {
+			return nil, fmt.Errorf("writing author.csr: %w", err)
 		}
 	}
 
@@ -150,5 +240,6 @@ func Run(cfg Config, progress func(string)) (*Result, error) {
 		ActiveProfile:   active,
 		DUIDCount:       len(cfg.DUIDs),
 		NotAfter:        distCerts[0].NotAfter,
+		AuthorReused:    authorReused,
 	}, nil
 }
