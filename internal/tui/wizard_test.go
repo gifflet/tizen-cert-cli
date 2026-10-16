@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/gifflet/tizen-cert-cli/internal/pki"
 )
 
 func key(s string) tea.KeyMsg {
@@ -108,6 +110,36 @@ func TestWizardRenewPrepopulatesDUIDs(t *testing.T) {
 	m, _ = m.Update(renewScannedMsg{})
 	if view := m.View(); !strings.Contains(view, "no folders found") {
 		t.Fatalf("renew view unexpected:\n%s", view)
+	}
+}
+
+// Picking a profile to renew hands its folder to the flow so the author is reused.
+func TestWizardRenewReusesAuthorFolder(t *testing.T) {
+	var m tea.Model = New()
+	m, _ = m.Update(key("j"))
+	m, _ = m.Update(key("enter")) // renew mode
+	m, _ = m.Update(renewScannedMsg{choices: []renewChoice{{Dir: "/certs/lab", Info: &pki.CertInfo{}}}})
+	m, _ = m.Update(key("enter"))
+	if got := m.(model).buildFlowConfig().ReuseAuthorFrom; got != "/certs/lab" {
+		t.Fatalf("ReuseAuthorFrom = %q, want /certs/lab", got)
+	}
+}
+
+// A renewal abandoned with esc must not make a new profile reuse the old author.
+func TestWizardCreateAfterAbandonedRenewDoesNotReuseAuthor(t *testing.T) {
+	var m tea.Model = New()
+	m, _ = m.Update(key("j"))
+	m, _ = m.Update(key("enter")) // renew mode
+	m, _ = m.Update(renewScannedMsg{choices: []renewChoice{{Dir: "/certs/lab", Info: &pki.CertInfo{}}}})
+	m, _ = m.Update(key("enter"))
+	m, _ = m.Update(key("esc"))
+	for m.(model).step != stepMode {
+		m, _ = m.Update(key("esc"))
+	}
+	m, _ = m.Update(key("k"))
+	m, _ = m.Update(key("enter")) // create mode
+	if got := m.(model).buildFlowConfig().ReuseAuthorFrom; got != "" {
+		t.Fatalf("ReuseAuthorFrom = %q, want empty in create mode", got)
 	}
 }
 
@@ -221,5 +253,219 @@ func TestWizardActivateSkippedWithoutCurrentActive(t *testing.T) {
 	}
 	if !inner.buildFlowConfig().MakeActive {
 		t.Error("MakeActive should be true when reissuing the active profile")
+	}
+}
+
+// Picking the same renew profile twice must not duplicate rows.
+func TestRenewSameProfileTwiceNoDuplicateRows(t *testing.T) {
+	info := &pki.CertInfo{DUIDs: []string{"DUID-1", "DUID-2"}}
+	choices := []renewChoice{{Dir: "/tmp/prof1", Info: info}}
+
+	m := New().(model)
+	m.step = stepRenewPick
+	m.renewChoices = choices
+
+	// First pick.
+	result, _ := m.Update(key("enter"))
+	m = result.(model)
+	if len(m.rows) != 2 {
+		t.Fatalf("after first pick: expected 2 rows, got %d", len(m.rows))
+	}
+
+	// Simulate going back to renew pick without clearing rows.
+	m.step = stepRenewPick
+
+	// Second pick of the same profile.
+	result, _ = m.Update(key("enter"))
+	m = result.(model)
+	if len(m.rows) != 2 {
+		t.Errorf("after second pick: expected 2 rows, got %d (duplicates present)", len(m.rows))
+	}
+}
+
+// A cert that already has duplicate DUIDs must produce only one row per DUID.
+func TestRenewCertWithDuplicateDUIDsGeneratesOneRow(t *testing.T) {
+	info := &pki.CertInfo{DUIDs: []string{"DUID-1", "DUID-1", "DUID-2"}}
+	choices := []renewChoice{{Dir: "/tmp/prof1", Info: info}}
+
+	m := New().(model)
+	m.step = stepRenewPick
+	m.renewChoices = choices
+
+	result, _ := m.Update(key("enter"))
+	m = result.(model)
+
+	if len(m.rows) != 2 {
+		t.Errorf("expected 2 rows (deduped), got %d", len(m.rows))
+	}
+	seen := make(map[string]bool)
+	for _, r := range m.rows {
+		if seen[r.DUID] {
+			t.Errorf("duplicate DUID %q in rows", r.DUID)
+		}
+		seen[r.DUID] = true
+	}
+}
+
+// A repeated scan must not add new copies of already-listed TVs.
+func TestRepeatedScanDoesNotDuplicateTVs(t *testing.T) {
+	var m tea.Model = New()
+	m, _ = m.Update(key("enter")) // create mode → stepDevices
+
+	scanned := []deviceRow{{Label: "192.168.1.100  MyTV", DUID: "DUID-A", Selected: true}}
+
+	m, _ = m.Update(devicesScannedMsg{rows: scanned})
+	if got := len(m.(model).rows); got != 1 {
+		t.Fatalf("after first scan: expected 1 row, got %d", got)
+	}
+
+	// Second scan with the same result.
+	m, _ = m.Update(devicesScannedMsg{rows: scanned})
+	if got := len(m.(model).rows); got != 1 {
+		t.Errorf("after second scan: expected 1 row, got %d (duplicates present)", got)
+	}
+}
+
+// TestDUIDFetchedAppliesCorrectlyAfterMerge verifies that async DUID results
+// are applied to the right row even when a prior result caused a merge+removal
+// that shifted row positions.
+func TestDUIDFetchedAppliesCorrectlyAfterMerge(t *testing.T) {
+	m := New().(model)
+	m.step = stepDevices
+
+	// Row A: scan result, pending DUID fetch.
+	m.nextRowID++
+	rowAID := m.nextRowID
+	// Row X: renewed entry with a known DUID.
+	m.nextRowID++
+	rowXID := m.nextRowID
+	// Row IP: IP-based entry, pending DUID fetch.
+	m.nextRowID++
+	rowIPID := m.nextRowID
+
+	m.rows = []deviceRow{
+		{ID: rowAID, Label: "serial-A", Selected: true},
+		{ID: rowXID, Label: "renewed: DUID-X", DUID: "DUID-X", Manual: true, Selected: true},
+		{ID: rowIPID, Label: "192.168.1.1 (connecting...)", Selected: true},
+	}
+
+	// A's DUID arrives as "DUID-X" — same as row X — so X is removed (merged).
+	result, _ := m.Update(duidFetchedMsg{rowID: rowAID, duid: "DUID-X"})
+	m = result.(model)
+
+	if len(m.rows) != 2 {
+		t.Fatalf("after merge: expected 2 rows, got %d", len(m.rows))
+	}
+	foundIP := false
+	for _, r := range m.rows {
+		if r.ID == rowIPID {
+			foundIP = true
+		}
+	}
+	if !foundIP {
+		t.Fatal("IP row disappeared after merge")
+	}
+
+	// IP's DUID arrives — must be applied to the IP row, not dropped or misapplied.
+	result, _ = m.Update(duidFetchedMsg{rowID: rowIPID, duid: "DUID-IP"})
+	m = result.(model)
+
+	if len(m.rows) != 2 {
+		t.Fatalf("after IP DUID: expected 2 rows, got %d", len(m.rows))
+	}
+	for _, r := range m.rows {
+		if r.ID == rowIPID {
+			if r.DUID != "DUID-IP" {
+				t.Errorf("IP row DUID = %q, want DUID-IP", r.DUID)
+			}
+			return
+		}
+	}
+	t.Error("IP row not found after DUID fetch")
+}
+
+// A renewed DUID merged into a scanned TV must survive a rescan without that TV.
+func TestMergedRenewedDUIDSurvivesRescan(t *testing.T) {
+	m := New().(model)
+	m.step = stepDevices
+	m.rows = []deviceRow{
+		{ID: 1, Label: "serial-A", Selected: true},
+		{ID: 2, Label: "renewed: DUID-X", DUID: "DUID-X", Manual: true, Selected: true},
+	}
+	m.nextRowID = 2
+
+	result, _ := m.Update(duidFetchedMsg{rowID: 1, duid: "DUID-X"})
+	result, _ = result.Update(devicesScannedMsg{}) // TV A is gone
+	m = result.(model)
+
+	if len(m.rows) != 1 || m.rows[0].DUID != "DUID-X" {
+		t.Fatalf("expected DUID-X to be kept after rescan, got %+v", m.rows)
+	}
+}
+
+// Rows shrinking under the cursor (merge or rescan) must not leave it out of range.
+func TestDevCursorClampedWhenRowsShrink(t *testing.T) {
+	m := New().(model)
+	m.step = stepDevices
+	m.rows = []deviceRow{
+		{ID: 1, Label: "serial-A", Scanned: true, Selected: true},
+		{ID: 2, Label: "renewed: DUID-X", DUID: "DUID-X", Manual: true, Selected: true},
+	}
+	m.nextRowID = 2
+	m.devCursor = 1
+
+	result, _ := m.Update(duidFetchedMsg{rowID: 1, duid: "DUID-X"})
+	result, _ = result.Update(key(" ")) // panicked with index out of range before
+	if got := result.(model).devCursor; got != 0 {
+		t.Fatalf("devCursor = %d, want 0", got)
+	}
+}
+
+// Re-entering the devices step keeps address-added rows and the user's choices.
+func TestRescanKeepsAddressRowsAndSelection(t *testing.T) {
+	m := New().(model)
+	m.step = stepDevices
+	m.rows = []deviceRow{
+		{ID: 1, Label: "10.0.0.5:26101  TV-A", DUID: "DUID-A", Scanned: true, Selected: false},
+		{ID: 2, Label: "10.0.0.9 (connecting...)", DUID: "DUID-B", Selected: true},
+	}
+	m.nextRowID = 2
+
+	result, _ := m.Update(devicesScannedMsg{rows: []deviceRow{
+		{Label: "10.0.0.5:26101  TV-A", Scanned: true, Selected: true},
+	}})
+	m = result.(model)
+
+	if len(m.rows) != 2 {
+		t.Fatalf("expected 2 rows, got %+v", m.rows)
+	}
+	if m.rows[0].Selected {
+		t.Error("TV-A was deselected by the user and must stay deselected")
+	}
+	if m.rows[1].DUID != "DUID-B" {
+		t.Errorf("address-added row lost, rows = %+v", m.rows)
+	}
+}
+
+// buildFlowConfig must not emit the same DUID twice even if m.rows has duplicates.
+func TestBuildFlowConfigDeduplicatesDUIDs(t *testing.T) {
+	m := New().(model)
+	m.rows = []deviceRow{
+		{DUID: "DUID-X", Selected: true},
+		{DUID: "DUID-X", Selected: true},
+		{DUID: "DUID-Y", Selected: true},
+	}
+
+	cfg := m.buildFlowConfig()
+
+	if len(cfg.DUIDs) != 2 {
+		t.Errorf("expected 2 DUIDs, got %d: %v", len(cfg.DUIDs), cfg.DUIDs)
+	}
+	seen := make(map[string]bool)
+	for _, d := range cfg.DUIDs {
+		if seen[d] {
+			t.Errorf("duplicate DUID %q in flow config", d)
+		}
+		seen[d] = true
 	}
 }

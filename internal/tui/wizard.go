@@ -57,11 +57,21 @@ var (
 // deviceRow is one selectable line in the devices step: either a TV found
 // via sdb or a DUID typed in manually.
 type deviceRow struct {
+	ID       int // monotonic stable identifier, never reused
 	Label    string
 	DUID     string
 	Manual   bool
+	Scanned  bool // listed by the last sdb scan; replaced by the next one
 	Selected bool
 	Err      string
+}
+
+// serial is the sdb serial a scanned row was labelled with.
+func (r deviceRow) serial() string {
+	if fields := strings.Fields(r.Label); len(fields) > 0 {
+		return fields[0]
+	}
+	return ""
 }
 
 // renewChoice is one existing certificate folder offered for renewal.
@@ -81,6 +91,7 @@ type model struct {
 	// renew
 	renewChoices []renewChoice
 	renewCursor  int
+	renewDir     string // directory of the profile chosen for renewal
 
 	// active profile (stepActivePick and stepActivate)
 	activeNames    []string // profiles registered in profiles.xml
@@ -93,6 +104,7 @@ type model struct {
 
 	// devices
 	rows       []deviceRow
+	nextRowID  int // monotonic counter for deviceRow.ID
 	devCursor  int
 	duidInput  textinput.Model
 	addingDUID bool
@@ -171,7 +183,7 @@ type devicesScannedMsg struct {
 }
 
 type duidFetchedMsg struct {
-	index int
+	rowID int
 	duid  string
 	err   error
 }
@@ -230,10 +242,10 @@ func scanDevicesCmd() tea.Msg {
 	return devicesScannedMsg{rows: rows}
 }
 
-func fetchDUIDCmd(index int, serial string) tea.Cmd {
+func fetchDUIDCmd(rowID int, serial string) tea.Cmd {
 	return func() tea.Msg {
 		duid, err := sdb.FetchDUID(serial)
-		return duidFetchedMsg{index: index, duid: duid, err: err}
+		return duidFetchedMsg{rowID: rowID, duid: duid, err: err}
 	}
 }
 
@@ -316,9 +328,11 @@ func listenProgressCmd(progress chan string) tea.Cmd {
 }
 
 func (m model) buildFlowConfig() flow.Config {
+	seen := make(map[string]bool)
 	var duids []string
 	for _, r := range m.rows {
-		if r.Selected && r.DUID != "" {
+		if r.Selected && r.DUID != "" && !seen[r.DUID] {
+			seen[r.DUID] = true
 			duids = append(duids, r.DUID)
 		}
 	}
@@ -327,12 +341,13 @@ func (m model) buildFlowConfig() flow.Config {
 		privilege = "Partner"
 	}
 	return flow.Config{
-		ProfileName: strings.TrimSpace(m.inputs[fieldName].Value()),
-		Email:       strings.TrimSpace(m.inputs[fieldEmail].Value()),
-		Password:    m.inputs[fieldPassword].Value(),
-		Privilege:   privilege,
-		DUIDs:       duids,
-		Session:     m.session,
-		MakeActive:  m.makeActive,
+		ProfileName:     strings.TrimSpace(m.inputs[fieldName].Value()),
+		Email:           strings.TrimSpace(m.inputs[fieldEmail].Value()),
+		Password:        m.inputs[fieldPassword].Value(),
+		Privilege:       privilege,
+		DUIDs:           duids,
+		Session:         m.session,
+		MakeActive:      m.makeActive,
+		ReuseAuthorFrom: m.renewDir,
 	}
 }

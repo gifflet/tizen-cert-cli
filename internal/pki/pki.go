@@ -118,6 +118,20 @@ func EncodeP12(key *rsa.PrivateKey, cert *x509.Certificate, chain []*x509.Certif
 	return pkcs12.LegacyDES.WithRand(rand.Reader).Encode(key, cert, chain, password)
 }
 
+// DecodeP12 extracts the private key, leaf certificate and CA chain from a
+// PKCS#12 bundle. Returns an error if the key is not RSA.
+func DecodeP12(data []byte, password string) (*rsa.PrivateKey, *x509.Certificate, []*x509.Certificate, error) {
+	key, cert, chain, err := pkcs12.DecodeChain(data, password)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("author.p12 key is not RSA")
+	}
+	return rsaKey, cert, chain, nil
+}
+
 // ParseCertificatesPEM parses every CERTIFICATE block in the given PEM data.
 func ParseCertificatesPEM(data []byte) ([]*x509.Certificate, error) {
 	var certs []*x509.Certificate
