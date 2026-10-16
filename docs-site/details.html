@@ -75,7 +75,7 @@
     <h2>Small tool, sharp edges filed off</h2>
     <div class="feat-grid">
       <div class="feat reveal"><span class="ico">📦</span><h3>Standalone binary</h3><p>Single static binary for macOS, Linux and Windows. No Tizen Studio, no Java, no Python.</p></div>
-      <div class="feat reveal"><span class="ico">🔁</span><h3>Renewal-first</h3><p>Reissues expired profiles reusing their DUIDs — the most common certificate chore becomes two keystrokes.</p></div>
+      <div class="feat reveal"><span class="ico">🔁</span><h3>Renewal-first</h3><p>Reissues expired profiles reusing their DUIDs and author certificate — the most common certificate chore becomes two keystrokes, and installed apps keep updating in place.</p></div>
       <div class="feat reveal"><span class="ico">📺</span><h3>Up to 50 TVs</h3><p>One distributor certificate covers your whole lab, bound to each TV's DUID (Samsung's limit).</p></div>
       <div class="feat reveal"><span class="ico">🔏</span><h3>Signer-compatible output</h3><p>Legacy-3DES PKCS#12 and the profiles.xml password cipher, byte-compatible with Tizen's Java signer.</p></div>
       <div class="feat reveal"><span class="ico">🛡️</span><h3>Safe writes</h3><p>profiles.xml is updated atomically and other registered profiles are preserved — never truncated.</p></div>
@@ -93,7 +93,7 @@
     <table>
       <thead><tr><th>Output</th><th>What it is</th></tr></thead>
       <tbody>
-        <tr><td><code>author.p12</code> / <code>author.crt</code></td><td>Your author identity — key + Samsung-issued certificate, VD author CA embedded in the bundle.</td></tr>
+        <tr><td><code>author.p12</code> / <code>author.crt</code></td><td>Your author identity — key + Samsung-issued certificate, VD author CA embedded in the bundle. Kept as-is on renewal unless it has expired.</td></tr>
         <tr><td><code>distributor.p12</code> / <code>distributor.crt</code></td><td>The distributor certificate bound to your TVs' DUIDs, Public or Partner CA embedded.</td></tr>
         <tr><td><code>device-profile.xml</code></td><td>The v1 issuance intermediate, kept for parity with the official extension.</td></tr>
         <tr><td><code>profiles.xml</code> entry</td><td>The signing profile, registered and set active (or not — the wizard asks when another profile holds that spot, and a dedicated menu entry switches the active profile anytime) — with the password stored in the cipher Tizen's tools expect.</td></tr>
