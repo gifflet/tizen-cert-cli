@@ -39,7 +39,7 @@ Read them first if you'd rather: [install.sh](https://tizen-cert-cli.vercel.app/
 ## ✨ Highlights
 
 - 📡 **Detects TVs automatically** — via `sdb`, or accept DUIDs typed manually, or a TV IP address to connect on the spot.
-- ♻️ **Renews expired profiles** — point it at an existing `~/SamsungCertificate/<name>` folder and it reuses the DUIDs from the old distributor certificate.
+- ♻️ **Renews expired profiles** — point it at an existing `~/SamsungCertificate/<name>` folder and it reuses the DUIDs from the old distributor certificate and keeps the author certificate, so apps already on the TVs update in place.
 - 🔐 **Signs in for you** — the same browser flow as Tizen Studio's certificate extension, with a manual token fallback for headless machines.
 - 📜 **Issues both certificates** — author certificate + distributor certificate bound to the selected DUIDs, Public or Partner privilege.
 - 📦 **Writes everything ready to use** — `author.p12`, `distributor.p12`, `.crt`/`.csr` files under `~/SamsungCertificate/<name>/`, and registers the profile directly in `profiles.xml` — no `tizen` CLI required.
@@ -73,7 +73,7 @@ make all          # dist/ binaries for linux/darwin (amd64+arm64) and windows (a
 | Mode | What happens |
 |---|---|
 | **Create a new profile** | Select TVs / add DUIDs → choose privilege → name, e-mail, password → Samsung sign-in → done |
-| **Renew an existing profile** | Pick the expired folder → same flow, with DUIDs pre-selected |
+| **Renew an existing profile** | Pick the folder → same flow, with its DUIDs pre-selected (each listed once) → enter the profile's current password → only the distributor is reissued |
 | **Choose the active profile** | Pick any registered profile → it becomes the one the Tizen tools sign with by default — no sign-in needed |
 
 When another profile is already active, creating or renewing also asks whether the new profile should take over as the active one.
@@ -84,6 +84,7 @@ When another profile is already active, creating or renewing also asks whether t
 
 | Topic | Detail |
 |---|---|
+| **Renewing keeps the author** | A TV refuses to update an app signed by a different author, so renewal reuses the folder's `author.p12` and reissues only the distributor. The password you type must open that `author.p12` — the wizard stops with an error otherwise. A new author is issued only when the old one has expired or is missing, and the final screen then tells you to uninstall the app from the TVs before installing. To start over with a new author on purpose, create a new profile with the same name. |
 | **DUID sources** | `sdb shell 0 getduid` (what the tool runs, also when you type a TV IP) or the TV's own menu — `Support > Contact Samsung` → "Unique Device ID". **Not** the `duid` field from the TV's REST API (`http://<tv>:8001/api/v2/`) — that's a different, SmartThings-space UUID, and it isn't valid for certificates. |
 | **Headless / SSH servers** | Samsung posts the sign-in result to `localhost:4794`, so forward that port from your local machine first: `ssh -L 4794:localhost:4794 user@server`, then open the sign-in URL in your **local** browser — the flow completes by itself. The wizard detects SSH sessions, prints this command pre-filled, and `c` copies the URL to your local clipboard (OSC 52). |
 

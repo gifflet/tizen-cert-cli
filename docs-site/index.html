@@ -40,7 +40,7 @@
     <p class="sub">
       An interactive CLI that generates a complete, valid Samsung certificate profile —
       author + distributor for up to 50 TVs — and registers it ready to sign.
-      No Tizen Studio required. Renewals keep your DUIDs.
+      No Tizen Studio required. Renewals keep your DUIDs and your author.
     </p>
     <div class="install-box" id="install">
       <div class="install-tabs" role="tablist">
@@ -85,7 +85,7 @@
       <div class="step reveal">
         <span class="dot">2</span>
         <div><h3>Or renew what you have</h3>
-        <p>Point it at an expired profile in <code>~/SamsungCertificate</code> — the DUIDs are read out of the old distributor certificate and pre-selected.</p></div>
+        <p>Point it at an expired profile in <code>~/SamsungCertificate</code> — the DUIDs are read out of the old distributor certificate and pre-selected, and the author certificate is kept, so installed apps update without a reinstall.</p></div>
       </div>
       <div class="step reveal">
         <span class="dot">3</span>
@@ -151,6 +151,10 @@
     <details class="reveal">
       <summary>My signing fails with "Invalid password" — is my password wrong?</summary>
       <div class="body">Probably not. Tizen's Java signer rejects modern AES-encrypted PKCS#12 files and misreports it as a password error. This tool always emits legacy-3DES bundles precisely to avoid that failure mode.</div>
+    </details>
+    <details class="reveal">
+      <summary>Do I have to reinstall my apps after renewing?</summary>
+      <div class="body">No. A TV only accepts an app update signed by the same author, so renewal keeps the profile's <code>author.p12</code> and reissues just the distributor certificate with the selected DUIDs. Enter the profile's current password — it has to open that <code>author.p12</code>, or the wizard stops before contacting Samsung. A new author is issued only when the old one has expired or is missing; the final screen then says so, and the app must be uninstalled from the TVs before installing the newly signed package.</div>
     </details>
     <details class="reveal">
       <summary>What about Partner-level privileges?</summary>
